@@ -11,7 +11,7 @@
 #include <VSHelper.h>
 
 template<typename T>
-static void copyPad(const VSFrameRef * src, VSFrameRef * dst, const int plane, const int off, const bool dh, const int bytes, const VSAPI * vsapi) noexcept {
+static void copyPad(const VSFrameRef * src, VSFrameRef * dst, const int plane, const int off, const bool dh, const VSAPI * vsapi) noexcept {
     const int srcWidth = vsapi->getFrameWidth(src, plane);
     const int dstWidth = vsapi->getFrameWidth(dst, 0);
     const int srcHeight = vsapi->getFrameHeight(src, plane);
@@ -23,12 +23,12 @@ static void copyPad(const VSFrameRef * src, VSFrameRef * dst, const int plane, c
 
     if (!dh)
         vs_bitblt(dstp + dstStride * (4 + off) + 12, vsapi->getStride(dst, 0) * 2,
-            srcp + srcStride * off, vsapi->getStride(src, plane) * 2,
-            srcWidth * bytes, srcHeight / 2);
+                  srcp + srcStride * off, vsapi->getStride(src, plane) * 2,
+                  srcWidth * sizeof(T), srcHeight / 2);
     else
         vs_bitblt(dstp + dstStride * (4 + off) + 12, vsapi->getStride(dst, 0) * 2,
-            srcp, vsapi->getStride(src, plane),
-            srcWidth * bytes, srcHeight);
+                  srcp, vsapi->getStride(src, plane),
+                  srcWidth * sizeof(T), srcHeight);
 
     dstp += dstStride * (4 + off);
 
@@ -45,10 +45,10 @@ static void copyPad(const VSFrameRef * src, VSFrameRef * dst, const int plane, c
     dstp = reinterpret_cast<T *>(vsapi->getWritePtr(dst, 0));
 
     for (int y = off; y < 4; y += 2)
-        memcpy(dstp + dstStride * y, dstp + dstStride * (8 - y), dstWidth * bytes);
+        memcpy(dstp + dstStride * y, dstp + dstStride * (8 - y), dstWidth * sizeof(T));
 
     for (int y = dstHeight - 4 + off, c = 2 + 2 * off; y < dstHeight; y += 2, c += 4)
-        memcpy(dstp + dstStride * y, dstp + dstStride * (y - c), dstWidth * bytes);
+        memcpy(dstp + dstStride * y, dstp + dstStride * (y - c), dstWidth * sizeof(T));
 }
 
 template<typename T>
@@ -88,7 +88,7 @@ inline void interpolate(const float * src3p, const float * src1p, const float * 
 template<typename T>
 static void vCheck(const T * srcp, const T * scpp, T * VS_RESTRICT dstp, const int * dmap, void * _tline, const int field_n,
                    const int dstWidth, const int srcHeight, const int srcStride, const int dstStride,
-                   const int vcheck, const float vthresh2, const float rcpVthresh0, const float rcpVthresh1, const float rcpVthresh2, const int peak, const int bytes) noexcept {
+                   const int vcheck, const float vthresh2, const float rcpVthresh0, const float rcpVthresh1, const float rcpVthresh2, const int peak) noexcept {
     for (int y = 4 + field_n; y < srcHeight - 4; y += 2) {
         if (y >= 6 && y < srcHeight - 6) {
             const T * dst3p = srcp - srcStride * 3;
@@ -138,7 +138,7 @@ static void vCheck(const T * srcp, const T * scpp, T * VS_RESTRICT dstp, const i
                 tline[x] = static_cast<T>((1.f - a) * dstp[x] + a * cint);
             }
 
-            memcpy(dstp, tline, dstWidth * bytes);
+            memcpy(dstp, tline, dstWidth * sizeof(T));
         }
 
         srcp += srcStride * 2;
@@ -152,7 +152,7 @@ static void vCheck(const T * srcp, const T * scpp, T * VS_RESTRICT dstp, const i
 template<>
 void vCheck(const float * srcp, const float * scpp, float * VS_RESTRICT dstp, const int * dmap, void * _tline, const int field_n,
             const int dstWidth, const int srcHeight, const int srcStride, const int dstStride,
-            const int vcheck, const float vthresh2, const float rcpVthresh0, const float rcpVthresh1, const float rcpVthresh2, const int peak, const int bytes) noexcept {
+            const int vcheck, const float vthresh2, const float rcpVthresh0, const float rcpVthresh1, const float rcpVthresh2, const int peak) noexcept {
     for (int y = 4 + field_n; y < srcHeight - 4; y += 2) {
         if (y >= 6 && y < srcHeight - 6) {
             const float * dst3p = srcp - srcStride * 3;
@@ -202,7 +202,7 @@ void vCheck(const float * srcp, const float * scpp, float * VS_RESTRICT dstp, co
                 tline[x] = (1.f - a) * dstp[x] + a * cint;
             }
 
-            memcpy(dstp, tline, dstWidth * bytes);
+            memcpy(dstp, tline, dstWidth * sizeof(float));
         }
 
         srcp += srcStride * 2;

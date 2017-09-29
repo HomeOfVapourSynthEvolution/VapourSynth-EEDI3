@@ -9,7 +9,7 @@ template<typename T>
 void processCL_sse4(const VSFrameRef * src, const VSFrameRef * scp, VSFrameRef * dst, VSFrameRef ** pad, const int field_n, const EEDI3CLData * d, const VSAPI * vsapi) {
     for (int plane = 0; plane < d->vi.format->numPlanes; plane++) {
         if (d->process[plane]) {
-            copyPad<T>(src, pad[plane], plane, 1 - field_n, d->dh, d->vi.format->bytesPerSample, vsapi);
+            copyPad<T>(src, pad[plane], plane, 1 - field_n, d->dh, vsapi);
 
             const int srcWidth = vsapi->getFrameWidth(pad[plane], 0);
             const int dstWidth = vsapi->getFrameWidth(dst, plane);
@@ -32,18 +32,18 @@ void processCL_sse4(const VSFrameRef * src, const VSFrameRef * scp, VSFrameRef *
             float * tline = d->tline.at(threadId);
 
             const int bufferSize = dstWidth * d->tpitchVector * sizeof(cl_float);
-            const size_t globalWorkSize[]{ static_cast<size_t>(dstWidth), static_cast<size_t>(d->vectorSize) };
+            const size_t globalWorkSize[] = { static_cast<size_t>(dstWidth), static_cast<size_t>(d->vectorSize) };
 
             vs_bitblt(_dstp + dstStride * (1 - field_n), vsapi->getStride(dst, plane) * 2,
                       _srcp + srcStride * (4 + 1 - field_n) + 12, vsapi->getStride(pad[plane], 0) * 2,
-                      dstWidth * d->vi.format->bytesPerSample, dstHeight / 2);
+                      dstWidth * sizeof(T), dstHeight / 2);
 
             queue.enqueue_write_image(srcImage, compute::dim(0, 0), compute::dim(srcWidth, srcHeight), _srcp, vsapi->getStride(pad[plane], 0));
 
             for (int y = 4 + field_n; y < srcHeight - 4; y += 2 * d->vectorSize) {
                 const int off = (y - 4 - field_n) >> 1;
 
-                calculateConnectionCosts.set_args(srcImage, _ccosts, dstWidth, srcHeight - 4, 4 + field_n + 2 * off);
+                calculateConnectionCosts.set_args(srcImage, _ccosts, dstWidth, srcHeight - 4, y);
                 queue.enqueue_nd_range_kernel(calculateConnectionCosts, 2, nullptr, globalWorkSize, nullptr);
 
                 float * ccosts = reinterpret_cast<float *>(queue.enqueue_map_buffer(_ccosts, CL_MAP_READ, 0, bufferSize)) + d->mdisVector;
@@ -110,7 +110,7 @@ void processCL_sse4(const VSFrameRef * src, const VSFrameRef * scp, VSFrameRef *
                     scpp = reinterpret_cast<const T *>(vsapi->getReadPtr(scp, plane)) + dstStride * field_n;
                 T * dstp = _dstp + dstStride * field_n;;
 
-                vCheck<T>(srcp, scpp, dstp, _dmap, tline, field_n, dstWidth, srcHeight, srcStride, dstStride, d->vcheck, d->vthresh2, d->rcpVthresh0, d->rcpVthresh1, d->rcpVthresh2, d->peak, d->vi.format->bytesPerSample);
+                vCheck<T>(srcp, scpp, dstp, _dmap, tline, field_n, dstWidth, srcHeight, srcStride, dstStride, d->vcheck, d->vthresh2, d->rcpVthresh0, d->rcpVthresh1, d->rcpVthresh2, d->peak);
             }
         }
     }

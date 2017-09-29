@@ -160,7 +160,7 @@ template<typename T1, typename T2>
 static void process_c(const VSFrameRef * src, const VSFrameRef * scp, VSFrameRef * dst, VSFrameRef ** pad, const int field_n, const EEDI3Data * d, const VSAPI * vsapi) noexcept {
     for (int plane = 0; plane < d->vi.format->numPlanes; plane++) {
         if (d->process[plane]) {
-            copyPad<T1>(src, pad[plane], plane, 1 - field_n, d->dh, d->vi.format->bytesPerSample, vsapi);
+            copyPad<T1>(src, pad[plane], plane, 1 - field_n, d->dh, vsapi);
 
             const int srcWidth = vsapi->getFrameWidth(pad[plane], 0);
             const int dstWidth = vsapi->getFrameWidth(dst, plane);
@@ -181,7 +181,7 @@ static void process_c(const VSFrameRef * src, const VSFrameRef * scp, VSFrameRef
 
             vs_bitblt(_dstp + dstStride * (1 - field_n), vsapi->getStride(dst, plane) * 2,
                       _srcp + srcStride * (4 + 1 - field_n), vsapi->getStride(pad[plane], 0) * 2,
-                      dstWidth * d->vi.format->bytesPerSample, dstHeight / 2);
+                      dstWidth * sizeof(T1), dstHeight / 2);
 
             _srcp += srcStride * (4 + field_n);
             _dstp += dstStride * field_n;
@@ -242,7 +242,7 @@ static void process_c(const VSFrameRef * src, const VSFrameRef * scp, VSFrameRef
                 if (d->sclip)
                     scpp = reinterpret_cast<const T1 *>(vsapi->getReadPtr(scp, plane)) + dstStride * field_n;
 
-                vCheck<T1>(_srcp, scpp, _dstp, _dmap, tline, field_n, dstWidth, srcHeight, srcStride, dstStride, d->vcheck, d->vthresh2, d->rcpVthresh0, d->rcpVthresh1, d->rcpVthresh2, d->peak, d->vi.format->bytesPerSample);
+                vCheck<T1>(_srcp, scpp, _dstp, _dmap, tline, field_n, dstWidth, srcHeight, srcStride, dstStride, d->vcheck, d->vthresh2, d->rcpVthresh0, d->rcpVthresh1, d->rcpVthresh2, d->peak);
             }
         }
     }
@@ -370,8 +370,8 @@ static const VSFrameRef *VS_CC eedi3GetFrame(int n, int activationReason, void *
         for (int plane = 0; plane < d->vi.format->numPlanes; plane++) {
             if (d->process[plane])
                 pad[plane] = vsapi->newVideoFrame(vsapi->registerFormat(cmGray, d->vi.format->sampleType, d->vi.format->bitsPerSample, 0, 0, core),
-                                                  (d->vi.width >> (plane ? d->vi.format->subSamplingW : 0)) + 24,
-                                                  (d->vi.height >> (plane ? d->vi.format->subSamplingH : 0)) + 8,
+                                                  vsapi->getFrameWidth(dst, plane) + 24,
+                                                  vsapi->getFrameHeight(dst, plane) + 8,
                                                   nullptr, core);
         }
 
@@ -644,7 +644,7 @@ void VS_CC eedi3Create(const VSMap *in, VSMap *out, void *userData, VSCore *core
 // Init
 
 #ifdef HAVE_OPENCL
-extern void VS_CC eedi3CLCreate(const VSMap *in, VSMap *out, void *userData, VSCore *core, const VSAPI *vsapi);
+extern void VS_CC eedi3clCreate(const VSMap *in, VSMap *out, void *userData, VSCore *core, const VSAPI *vsapi);
 #endif
 
 VS_EXTERNAL_API(void) VapourSynthPluginInit(VSConfigPlugin configFunc, VSRegisterFunction registerFunc, VSPlugin *plugin) {
@@ -694,6 +694,6 @@ VS_EXTERNAL_API(void) VapourSynthPluginInit(VSConfigPlugin configFunc, VSRegiste
                  "device:int:opt;"
                  "list_device:int:opt;"
                  "info:int:opt;",
-                 eedi3CLCreate, nullptr, plugin);
+                 eedi3clCreate, nullptr, plugin);
 #endif
 }

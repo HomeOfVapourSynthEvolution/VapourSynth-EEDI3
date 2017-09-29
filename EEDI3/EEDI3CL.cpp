@@ -40,7 +40,7 @@ template<typename T>
 static void processCL_c(const VSFrameRef * src, const VSFrameRef * scp, VSFrameRef * dst, VSFrameRef ** pad, const int field_n, const EEDI3CLData * d, const VSAPI * vsapi) {
     for (int plane = 0; plane < d->vi.format->numPlanes; plane++) {
         if (d->process[plane]) {
-            copyPad<T>(src, pad[plane], plane, 1 - field_n, d->dh, d->vi.format->bytesPerSample, vsapi);
+            copyPad<T>(src, pad[plane], plane, 1 - field_n, d->dh, vsapi);
 
             const int srcWidth = vsapi->getFrameWidth(pad[plane], 0);
             const int dstWidth = vsapi->getFrameWidth(dst, plane);
@@ -63,11 +63,11 @@ static void processCL_c(const VSFrameRef * src, const VSFrameRef * scp, VSFrameR
             float * tline = d->tline.at(threadId);
 
             const int bufferSize = dstWidth * d->tpitch * sizeof(cl_float);
-            const size_t globalWorkSize[]{ static_cast<size_t>(dstWidth), 1 };
+            const size_t globalWorkSize[] = { static_cast<size_t>(dstWidth), 1 };
 
             vs_bitblt(_dstp + dstStride * (1 - field_n), vsapi->getStride(dst, plane) * 2,
                       _srcp + srcStride * (4 + 1 - field_n) + 12, vsapi->getStride(pad[plane], 0) * 2,
-                      dstWidth * d->vi.format->bytesPerSample, dstHeight / 2);
+                      dstWidth * sizeof(T), dstHeight / 2);
 
             queue.enqueue_write_image(srcImage, compute::dim(0, 0), compute::dim(srcWidth, srcHeight), _srcp, vsapi->getStride(pad[plane], 0));
 
@@ -82,7 +82,7 @@ static void processCL_c(const VSFrameRef * src, const VSFrameRef * scp, VSFrameR
                 const T * src1n = srcp + srcStride;
                 const T * src3n = srcp + srcStride * 3;
 
-                calculateConnectionCosts.set_args(srcImage, _ccosts, dstWidth, srcHeight - 4, 4 + field_n + 2 * off);
+                calculateConnectionCosts.set_args(srcImage, _ccosts, dstWidth, srcHeight - 4, y);
                 queue.enqueue_nd_range_kernel(calculateConnectionCosts, 2, nullptr, globalWorkSize, nullptr);
 
                 float * ccosts = reinterpret_cast<float *>(queue.enqueue_map_buffer(_ccosts, CL_MAP_READ, 0, bufferSize)) + d->mdis;
@@ -134,7 +134,7 @@ static void processCL_c(const VSFrameRef * src, const VSFrameRef * scp, VSFrameR
                     scpp = reinterpret_cast<const T *>(vsapi->getReadPtr(scp, plane)) + dstStride * field_n;
                 T * dstp = _dstp + dstStride * field_n;;
 
-                vCheck<T>(srcp, scpp, dstp, _dmap, tline, field_n, dstWidth, srcHeight, srcStride, dstStride, d->vcheck, d->vthresh2, d->rcpVthresh0, d->rcpVthresh1, d->rcpVthresh2, d->peak, d->vi.format->bytesPerSample);
+                vCheck<T>(srcp, scpp, dstp, _dmap, tline, field_n, dstWidth, srcHeight, srcStride, dstStride, d->vcheck, d->vthresh2, d->rcpVthresh0, d->rcpVthresh1, d->rcpVthresh2, d->peak);
             }
         }
     }
@@ -165,12 +165,12 @@ static void selectFunctions(const unsigned opt, EEDI3CLData * d) noexcept {
     }
 }
 
-static void VS_CC eedi3CLInit(VSMap *in, VSMap *out, void **instanceData, VSNode *node, VSCore *core, const VSAPI *vsapi) {
+static void VS_CC eedi3clInit(VSMap *in, VSMap *out, void **instanceData, VSNode *node, VSCore *core, const VSAPI *vsapi) {
     EEDI3CLData * d = static_cast<EEDI3CLData *>(*instanceData);
     vsapi->setVideoInfo(&d->vi, 1, node);
 }
 
-static const VSFrameRef *VS_CC eedi3CLGetFrame(int n, int activationReason, void **instanceData, void **frameData, VSFrameContext *frameCtx, VSCore *core, const VSAPI *vsapi) {
+static const VSFrameRef *VS_CC eedi3clGetFrame(int n, int activationReason, void **instanceData, void **frameData, VSFrameContext *frameCtx, VSCore *core, const VSAPI *vsapi) {
     EEDI3CLData * d = static_cast<EEDI3CLData *>(*instanceData);
 
     if (activationReason == arInitial) {
@@ -259,8 +259,8 @@ static const VSFrameRef *VS_CC eedi3CLGetFrame(int n, int activationReason, void
         for (int plane = 0; plane < d->vi.format->numPlanes; plane++) {
             if (d->process[plane])
                 pad[plane] = vsapi->newVideoFrame(vsapi->registerFormat(cmGray, d->vi.format->sampleType, d->vi.format->bitsPerSample, 0, 0, core),
-                                                  (d->vi.width >> (plane ? d->vi.format->subSamplingW : 0)) + 24,
-                                                  (d->vi.height >> (plane ? d->vi.format->subSamplingH : 0)) + 8,
+                                                  vsapi->getFrameWidth(dst, plane) + 24,
+                                                  vsapi->getFrameHeight(dst, plane) + 8,
                                                   nullptr, core);
         }
 
@@ -327,7 +327,7 @@ static const VSFrameRef *VS_CC eedi3CLGetFrame(int n, int activationReason, void
     return nullptr;
 }
 
-static void VS_CC eedi3CLFree(void *instanceData, VSCore *core, const VSAPI *vsapi) {
+static void VS_CC eedi3clFree(void *instanceData, VSCore *core, const VSAPI *vsapi) {
     EEDI3CLData * d = static_cast<EEDI3CLData *>(instanceData);
 
     vsapi->freeNode(d->node);
@@ -351,7 +351,7 @@ static void VS_CC eedi3CLFree(void *instanceData, VSCore *core, const VSAPI *vsa
     delete d;
 }
 
-void VS_CC eedi3CLCreate(const VSMap *in, VSMap *out, void *userData, VSCore *core, const VSAPI *vsapi) {
+void VS_CC eedi3clCreate(const VSMap *in, VSMap *out, void *userData, VSCore *core, const VSAPI *vsapi) {
     std::unique_ptr<EEDI3CLData> d{ new EEDI3CLData{} };
     int err;
 
@@ -650,6 +650,6 @@ void VS_CC eedi3CLCreate(const VSMap *in, VSMap *out, void *userData, VSCore *co
         return;
     }
 
-    vsapi->createFilter(in, out, "EEDI3CL", eedi3CLInit, eedi3CLGetFrame, eedi3CLFree, fmParallel, 0, d.release(), core);
+    vsapi->createFilter(in, out, "EEDI3CL", eedi3clInit, eedi3clGetFrame, eedi3clFree, fmParallel, 0, d.release(), core);
 }
 #endif

@@ -147,7 +147,7 @@ template<typename T1, typename T2>
 void process_avx2(const VSFrameRef * src, const VSFrameRef * scp, VSFrameRef * dst, VSFrameRef ** pad, const int field_n, const EEDI3Data * d, const VSAPI * vsapi) noexcept {
     for (int plane = 0; plane < d->vi.format->numPlanes; plane++) {
         if (d->process[plane]) {
-            copyPad<T1>(src, pad[plane], plane, 1 - field_n, d->dh, d->vi.format->bytesPerSample, vsapi);
+            copyPad<T1>(src, pad[plane], plane, 1 - field_n, d->dh, vsapi);
 
             const int srcWidth = vsapi->getFrameWidth(pad[plane], 0);
             const int dstWidth = vsapi->getFrameWidth(dst, plane);
@@ -169,7 +169,7 @@ void process_avx2(const VSFrameRef * src, const VSFrameRef * scp, VSFrameRef * d
 
             vs_bitblt(_dstp + dstStride * (1 - field_n), vsapi->getStride(dst, plane) * 2,
                       _srcp + srcStride * (4 + 1 - field_n), vsapi->getStride(pad[plane], 0) * 2,
-                      dstWidth * d->vi.format->bytesPerSample, dstHeight / 2);
+                      dstWidth * sizeof(T1), dstHeight / 2);
 
             _srcp += srcStride * 4;
             _dstp += dstStride * field_n;
@@ -241,7 +241,7 @@ void process_avx2(const VSFrameRef * src, const VSFrameRef * scp, VSFrameRef * d
                 if (d->sclip)
                     scpp = reinterpret_cast<const T1 *>(vsapi->getReadPtr(scp, plane)) + dstStride * field_n;
 
-                vCheck<T1>(_srcp, scpp, _dstp, _dmap, tline, field_n, dstWidth, srcHeight, srcStride, dstStride, d->vcheck, d->vthresh2, d->rcpVthresh0, d->rcpVthresh1, d->rcpVthresh2, d->peak, d->vi.format->bytesPerSample);
+                vCheck<T1>(_srcp, scpp, _dstp, _dmap, tline, field_n, dstWidth, srcHeight, srcStride, dstStride, d->vcheck, d->vthresh2, d->rcpVthresh0, d->rcpVthresh1, d->rcpVthresh2, d->peak);
             }
         }
     }
