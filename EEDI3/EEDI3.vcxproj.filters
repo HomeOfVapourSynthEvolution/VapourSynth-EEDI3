@@ -33,12 +33,6 @@
     <ClCompile Include="EEDI3CL_SSE2.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="EEDI3CL_SSE4.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="EEDI3CL_AVX2.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="vectorclass\instrset_detect.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

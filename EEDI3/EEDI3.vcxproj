@@ -87,12 +87,7 @@
   <ItemGroup>
     <ClCompile Include="EEDI3.cpp" />
     <ClCompile Include="EEDI3CL.cpp" />
-    <ClCompile Include="EEDI3CL_AVX2.cpp">
-      <EnableEnhancedInstructionSet Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
-      <EnableEnhancedInstructionSet Condition="'$(Configuration)|$(Platform)'=='Release|x64'">AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
-    </ClCompile>
     <ClCompile Include="EEDI3CL_SSE2.cpp" />
-    <ClCompile Include="EEDI3CL_SSE4.cpp" />
     <ClCompile Include="EEDI3_AVX2.cpp">
       <EnableEnhancedInstructionSet Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
       <EnableEnhancedInstructionSet Condition="'$(Configuration)|$(Platform)'=='Release|x64'">AdvancedVectorExtensions2</EnableEnhancedInstructionSet>

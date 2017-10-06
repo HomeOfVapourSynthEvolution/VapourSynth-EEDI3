@@ -41,7 +41,7 @@ static inline void calculateConnectionCosts(const T * src3p, const T * src1p, co
                                             const int width, const EEDI3Data * d) noexcept {
     if (d->cost3) {
         for (int x = 0; x < width; x++) {
-            const int umax = std::min(std::min(x, width - 1 - x), d->mdis);
+            const int umax = std::min({ x, width - 1 - x, d->mdis });
 
             for (int u = -umax; u <= umax; u++) {
                 const int u2 = u * 2;
@@ -78,7 +78,7 @@ static inline void calculateConnectionCosts(const T * src3p, const T * src1p, co
         }
     } else {
         for (int x = 0; x < width; x++) {
-            const int umax = std::min(std::min(x, width - 1 - x), d->mdis);
+            const int umax = std::min({ x, width - 1 - x, d->mdis });
 
             for (int u = -umax; u <= umax; u++) {
                 int s = 0;
@@ -101,7 +101,7 @@ inline void calculateConnectionCosts(const float * src3p, const float * src1p, c
                                      const int width, const EEDI3Data * d) noexcept {
     if (d->cost3) {
         for (int x = 0; x < width; x++) {
-            const int umax = std::min(std::min(x, width - 1 - x), d->mdis);
+            const int umax = std::min({ x, width - 1 - x, d->mdis });
 
             for (int u = -umax; u <= umax; u++) {
                 const int u2 = u * 2;
@@ -138,7 +138,7 @@ inline void calculateConnectionCosts(const float * src3p, const float * src1p, c
         }
     } else {
         for (int x = 0; x < width; x++) {
-            const int umax = std::min(std::min(x, width - 1 - x), d->mdis);
+            const int umax = std::min({ x, width - 1 - x, d->mdis });
 
             for (int u = -umax; u <= umax; u++) {
                 float s = 0.f;
@@ -207,8 +207,8 @@ static void process_c(const VSFrameRef * src, const VSFrameRef * scp, VSFrameRef
                     float * pT = pcosts + d->tpitch * x;
                     int * piT = pbackt + d->tpitch * (x - 1);
 
-                    const int umax = std::min(std::min(x, dstWidth - 1 - x), d->mdis);
-                    const int umax2 = std::min(std::min(x - 1, dstWidth - x), d->mdis);
+                    const int umax = std::min({ x, dstWidth - 1 - x, d->mdis });
+                    const int umax2 = std::min({ x - 1, dstWidth - x, d->mdis });
 
                     for (int u = -umax; u <= umax; u++) {
                         int idx = 0;

@@ -31,8 +31,6 @@
 #include "EEDI3CL.cl"
 
 template<typename T> extern void processCL_sse2(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3CLData *, const VSAPI *);
-template<typename T> extern void processCL_sse4(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3CLData *, const VSAPI *);
-template<typename T> extern void processCL_avx2(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3CLData *, const VSAPI *);
 
 template<typename T> static void (*process)(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3CLData *, const VSAPI *) = nullptr;
 
@@ -62,8 +60,8 @@ static void processCL_c(const VSFrameRef * src, const VSFrameRef * scp, VSFrameR
             int * _dmap = d->dmap.at(threadId);
             float * tline = d->tline.at(threadId);
 
-            const int bufferSize = dstWidth * d->tpitch * sizeof(cl_float);
             const size_t globalWorkSize[] = { static_cast<size_t>(dstWidth), 1 };
+            const int bufferSize = dstWidth * d->tpitch * sizeof(cl_float);
 
             vs_bitblt(_dstp + dstStride * (1 - field_n), vsapi->getStride(dst, plane) * 2,
                       _srcp + srcStride * (4 + 1 - field_n) + 12, vsapi->getStride(pad[plane], 0) * 2,
@@ -95,8 +93,8 @@ static void processCL_c(const VSFrameRef * src, const VSFrameRef * scp, VSFrameR
                     float * pT = pcosts + d->tpitch * x;
                     int * piT = pbackt + d->tpitch * (x - 1);
 
-                    const int umax = std::min(std::min(x, dstWidth - 1 - x), d->mdis);
-                    const int umax2 = std::min(std::min(x - 1, dstWidth - x), d->mdis);
+                    const int umax = std::min({ x, dstWidth - 1 - x, d->mdis });
+                    const int umax2 = std::min({ x - 1, dstWidth - x, d->mdis });
 
                     for (int u = -umax; u <= umax; u++) {
                         int idx = 0;
@@ -147,17 +145,7 @@ static void selectFunctions(const unsigned opt, EEDI3CLData * d) noexcept {
     d->vectorSize = 1;
 
     const int iset = instrset_detect();
-    if ((opt == 0 && iset >= 8) || opt == 4) {
-        process<uint8_t> = processCL_avx2<uint8_t>;
-        process<uint16_t> = processCL_avx2<uint16_t>;
-        process<float> = processCL_avx2<float>;
-        d->vectorSize = 8;
-    } else if ((opt == 0 && iset >= 5) || opt == 3) {
-        process<uint8_t> = processCL_sse4<uint8_t>;
-        process<uint16_t> = processCL_sse4<uint16_t>;
-        process<float> = processCL_sse4<float>;
-        d->vectorSize = 4;
-    } else if ((opt == 0 && iset >= 2) || opt == 2) {
+    if ((opt == 0 && iset >= 2) || opt == 2) {
         process<uint8_t> = processCL_sse2<uint8_t>;
         process<uint16_t> = processCL_sse2<uint16_t>;
         process<float> = processCL_sse2<float>;
@@ -468,8 +456,8 @@ void VS_CC eedi3clCreate(const VSMap *in, VSMap *out, void *userData, VSCore *co
         if (d->vcheck && (vthresh0 <= 0.f || vthresh1 <= 0.f || d->vthresh2 <= 0.f))
             throw std::string{ "vthresh0, vthresh1 and vthresh2 must be greater than 0.0" };
 
-        if (opt < 0 || opt > 4)
-            throw std::string{ "opt must be 0, 1, 2, 3 or 4" };
+        if (opt < 0 || opt > 2)
+            throw std::string{ "opt must be 0, 1 or 2" };
 
         if (device >= static_cast<int>(compute::system::device_count()))
             throw std::string{ "device index out of range" };

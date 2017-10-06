@@ -27,8 +27,8 @@ void processCL_sse2(const VSFrameRef * src, const VSFrameRef * scp, VSFrameRef *
             int * _dmap = d->dmap.at(threadId);
             float * tline = d->tline.at(threadId);
 
-            const int bufferSize = dstWidth * d->tpitchVector * sizeof(cl_float);
             const size_t globalWorkSize[] = { static_cast<size_t>(dstWidth), static_cast<size_t>(d->vectorSize) };
+            const int bufferSize = dstWidth * d->tpitchVector * sizeof(cl_float);
 
             vs_bitblt(_dstp + dstStride * (1 - field_n), vsapi->getStride(dst, plane) * 2,
                       _srcp + srcStride * (4 + 1 - field_n) + 12, vsapi->getStride(pad[plane], 0) * 2,
@@ -52,8 +52,8 @@ void processCL_sse2(const VSFrameRef * src, const VSFrameRef * scp, VSFrameRef *
                     float * pT = pcosts + d->tpitchVector * x;
                     int * piT = _pbackt + d->tpitchVector * (x - 1);
 
-                    const int umax = std::min(std::min(x, dstWidth - 1 - x), d->mdis);
-                    const int umax2 = std::min(std::min(x - 1, dstWidth - x), d->mdis);
+                    const int umax = std::min({ x, dstWidth - 1 - x, d->mdis });
+                    const int umax2 = std::min({ x - 1, dstWidth - x, d->mdis });
 
                     for (int u = -umax; u <= umax; u++) {
                         Vec4i idx = zero_128b();

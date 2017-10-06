@@ -10,7 +10,7 @@ static inline void calculateConnectionCosts(const void * srcp, float * ccosts, c
 
     if (d->cost3) {
         for (int x = 0; x < width; x++) {
-            const int umax = std::min(std::min(x, width - 1 - x), d->mdis);
+            const int umax = std::min({ x, width - 1 - x, d->mdis });
 
             for (int u = -umax; u <= umax; u++) {
                 const int u2 = u * 2;
@@ -49,7 +49,7 @@ static inline void calculateConnectionCosts(const void * srcp, float * ccosts, c
         }
     } else {
         for (int x = 0; x < width; x++) {
-            const int umax = std::min(std::min(x, width - 1 - x), d->mdis);
+            const int umax = std::min({ x, width - 1 - x, d->mdis });
 
             for (int u = -umax; u <= umax; u++) {
                 Vec4i s = zero_128b();
@@ -77,7 +77,7 @@ inline void calculateConnectionCosts<float>(const void * srcp, float * ccosts, c
 
     if (d->cost3) {
         for (int x = 0; x < width; x++) {
-            const int umax = std::min(std::min(x, width - 1 - x), d->mdis);
+            const int umax = std::min({ x, width - 1 - x, d->mdis });
 
             for (int u = -umax; u <= umax; u++) {
                 const int u2 = u * 2;
@@ -116,7 +116,7 @@ inline void calculateConnectionCosts<float>(const void * srcp, float * ccosts, c
         }
     } else {
         for (int x = 0; x < width; x++) {
-            const int umax = std::min(std::min(x, width - 1 - x), d->mdis);
+            const int umax = std::min({ x, width - 1 - x, d->mdis });
 
             for (int u = -umax; u <= umax; u++) {
                 Vec4f s = zero_4f();
@@ -181,8 +181,8 @@ void process_sse2(const VSFrameRef * src, const VSFrameRef * scp, VSFrameRef * d
                     float * pT = pcosts + d->tpitchVector * x;
                     int * piT = _pbackt + d->tpitchVector * (x - 1);
 
-                    const int umax = std::min(std::min(x, dstWidth - 1 - x), d->mdis);
-                    const int umax2 = std::min(std::min(x - 1, dstWidth - x), d->mdis);
+                    const int umax = std::min({ x, dstWidth - 1 - x, d->mdis });
+                    const int umax2 = std::min({ x - 1, dstWidth - x, d->mdis });
 
                     for (int u = -umax; u <= umax; u++) {
                         Vec4i idx = zero_128b();

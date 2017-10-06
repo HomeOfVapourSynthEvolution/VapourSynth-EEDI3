@@ -133,7 +133,7 @@ static void vCheck(const T * srcp, const T * scpp, T * VS_RESTRICT dstp, const i
                 const float a0 = mdiff0 * rcpVthresh0;
                 const float a1 = mdiff1 * rcpVthresh1;
                 const float a2 = std::max((vthresh2 - std::abs(dirc)) * rcpVthresh2, 0.f);
-                const float a = std::min(std::max(std::max(a0, a1), a2), 1.f);
+                const float a = std::min(std::max({ a0, a1, a2 }), 1.f);
 
                 tline[x] = static_cast<T>((1.f - a) * dstp[x] + a * cint);
             }
@@ -197,7 +197,7 @@ void vCheck(const float * srcp, const float * scpp, float * VS_RESTRICT dstp, co
                 const float a0 = mdiff0 * rcpVthresh0;
                 const float a1 = mdiff1 * rcpVthresh1;
                 const float a2 = std::max((vthresh2 - std::abs(dirc)) * rcpVthresh2, 0.f);
-                const float a = std::min(std::max(std::max(a0, a1), a2), 1.f);
+                const float a = std::min(std::max({ a0, a1, a2 }), 1.f);
 
                 tline[x] = (1.f - a) * dstp[x] + a * cint;
             }
