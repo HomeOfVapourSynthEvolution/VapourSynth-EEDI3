@@ -82,7 +82,8 @@ Usage
   * 1 = use c
   * 2 = use sse2
   * 3 = use sse4.1
-  * 4 = use avx2
+  * 4 = use avx
+  * 5 = use avx2
 
 ---
 

@@ -22,15 +22,18 @@ libeedi3m_la_SOURCES += EEDI3/EEDI3_SSE2.cpp \
                         EEDI3/vectorclass/vectori256.h \
                         EEDI3/vectorclass/vectori256e.h
 
-noinst_LTLIBRARIES = libsse4.la libavx2.la
+noinst_LTLIBRARIES = libsse4.la libavx.la libavx2.la
 
 libsse4_la_SOURCES = EEDI3/EEDI3_SSE4.cpp
 libsse4_la_CXXFLAGS = $(AM_CXXFLAGS) -msse4.1
 
-libavx2_la_SOURCES = EEDI3/EEDI3_AVX2.cpp
-libavx2_la_CXXFLAGS = $(AM_CXXFLAGS) -mfma -mavx2
+libavx_la_SOURCES = EEDI3/EEDI3_AVX.cpp
+libavx_la_CXXFLAGS = $(AM_CXXFLAGS) -mavx
 
-libeedi3m_la_LIBADD = libsse4.la libavx2.la
+libavx2_la_SOURCES = EEDI3/EEDI3_AVX2.cpp
+libavx2_la_CXXFLAGS = $(AM_CXXFLAGS) -mavx2 -mfma
+
+libeedi3m_la_LIBADD = libsse4.la libavx.la libavx2.la
 endif
 
 if OPENCL

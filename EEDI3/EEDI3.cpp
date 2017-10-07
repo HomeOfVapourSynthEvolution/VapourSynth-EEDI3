@@ -31,6 +31,7 @@
 #ifdef VS_TARGET_CPU_X86
 template<typename T1, typename T2> extern void process_sse2(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3Data *, const VSAPI *) noexcept;
 template<typename T1, typename T2> extern void process_sse4(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3Data *, const VSAPI *) noexcept;
+template<typename T1, typename T2> extern void process_avx(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3Data *, const VSAPI *) noexcept;
 template<typename T1, typename T2> extern void process_avx2(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3Data *, const VSAPI *) noexcept;
 #endif
 
@@ -256,10 +257,15 @@ static void selectFunctions(const unsigned opt, EEDI3Data * d) noexcept {
 
 #ifdef VS_TARGET_CPU_X86
     const int iset = instrset_detect();
-    if ((opt == 0 && iset >= 8) || opt == 4) {
+    if ((opt == 0 && iset >= 8) || opt == 5) {
         process<uint8_t> = process_avx2<uint8_t, int>;
         process<uint16_t> = process_avx2<uint16_t, int>;
         process<float> = process_avx2<float, float>;
+        d->vectorSize = 8;
+    } else if ((opt == 0 && iset >= 7) || opt == 4) {
+        process<uint8_t> = process_avx<uint8_t, float>;
+        process<uint16_t> = process_avx<uint16_t, float>;
+        process<float> = process_avx<float, float>;
         d->vectorSize = 8;
     } else if ((opt == 0 && iset >= 5) || opt == 3) {
         process<uint8_t> = process_sse4<uint8_t, int>;
@@ -571,8 +577,8 @@ void VS_CC eedi3Create(const VSMap *in, VSMap *out, void *userData, VSCore *core
         if (d->vcheck && (vthresh0 <= 0.f || vthresh1 <= 0.f || d->vthresh2 <= 0.f))
             throw std::string{ "vthresh0, vthresh1 and vthresh2 must be greater than 0.0" };
 
-        if (opt < 0 || opt > 4)
-            throw std::string{ "opt must be 0, 1, 2, 3 or 4" };
+        if (opt < 0 || opt > 5)
+            throw std::string{ "opt must be 0, 1, 2, 3, 4 or 5" };
 
         if (d->field > 1) {
             if (d->vi.numFrames > INT_MAX / 2)
