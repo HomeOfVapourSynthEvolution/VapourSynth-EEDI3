@@ -49,4 +49,5 @@ struct EEDI3Data {
     float remainingWeight, rcpVthresh0, rcpVthresh1, rcpVthresh2;
     std::unordered_map<std::thread::id, float *> ccosts, pcosts, tline;
     std::unordered_map<std::thread::id, int *> srcVector, pbackt, fpath, dmap;
+    void (*processor)(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3Data *, const VSAPI *);
 };

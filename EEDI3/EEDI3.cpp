@@ -35,8 +35,6 @@ template<typename T1, typename T2> extern void process_avx(const VSFrameRef *, c
 template<typename T1, typename T2> extern void process_avx2(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3Data *, const VSAPI *) noexcept;
 #endif
 
-template<typename T1, typename T2 = void> static void (*process)(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3Data *, const VSAPI *) = nullptr;
-
 template<typename T>
 static inline void calculateConnectionCosts(const T * src3p, const T * src1p, const T * src1n, const T * src3n, float * VS_RESTRICT ccosts,
                                             const int width, const EEDI3Data * d) noexcept {
@@ -250,35 +248,61 @@ static void process_c(const VSFrameRef * src, const VSFrameRef * scp, VSFrameRef
 }
 
 static void selectFunctions(const unsigned opt, EEDI3Data * d) noexcept {
-    process<uint8_t> = process_c<uint8_t, void>;
-    process<uint16_t> = process_c<uint16_t, void>;
-    process<float> = process_c<float, void>;
     d->vectorSize = 1;
 
 #ifdef VS_TARGET_CPU_X86
     const int iset = instrset_detect();
-    if ((opt == 0 && iset >= 8) || opt == 5) {
-        process<uint8_t> = process_avx2<uint8_t, int>;
-        process<uint16_t> = process_avx2<uint16_t, int>;
-        process<float> = process_avx2<float, float>;
+
+    if ((opt == 0 && iset >= 8) || opt == 5)
         d->vectorSize = 8;
-    } else if ((opt == 0 && iset >= 7) || opt == 4) {
-        process<uint8_t> = process_avx<uint8_t, float>;
-        process<uint16_t> = process_avx<uint16_t, float>;
-        process<float> = process_avx<float, float>;
+    else if ((opt == 0 && iset >= 7) || opt == 4)
         d->vectorSize = 8;
-    } else if ((opt == 0 && iset >= 5) || opt == 3) {
-        process<uint8_t> = process_sse4<uint8_t, int>;
-        process<uint16_t> = process_sse4<uint16_t, int>;
-        process<float> = process_sse4<float, float>;
+    else if ((opt == 0 && iset >= 5) || opt == 3)
         d->vectorSize = 4;
-    } else if ((opt == 0 && iset >= 2) || opt == 2) {
-        process<uint8_t> = process_sse2<uint8_t, int>;
-        process<uint16_t> = process_sse2<uint16_t, int>;
-        process<float> = process_sse2<float, float>;
+    else if ((opt == 0 && iset >= 2) || opt == 2)
         d->vectorSize = 4;
-    }
 #endif
+
+    if (d->vi.format->bytesPerSample == 1) {
+        d->processor = process_c<uint8_t, void>;
+
+#ifdef VS_TARGET_CPU_X86
+        if ((opt == 0 && iset >= 8) || opt == 5)
+            d->processor = process_avx2<uint8_t, int>;
+        else if ((opt == 0 && iset >= 7) || opt == 4)
+            d->processor = process_avx<uint8_t, float>;
+        else if ((opt == 0 && iset >= 5) || opt == 3)
+            d->processor = process_sse4<uint8_t, int>;
+        else if ((opt == 0 && iset >= 2) || opt == 2)
+            d->processor = process_sse2<uint8_t, int>;
+#endif
+    } else if (d->vi.format->bytesPerSample == 2) {
+        d->processor = process_c<uint16_t, void>;
+
+#ifdef VS_TARGET_CPU_X86
+        if ((opt == 0 && iset >= 8) || opt == 5)
+            d->processor = process_avx2<uint16_t, int>;
+        else if ((opt == 0 && iset >= 7) || opt == 4)
+            d->processor = process_avx<uint16_t, float>;
+        else if ((opt == 0 && iset >= 5) || opt == 3)
+            d->processor = process_sse4<uint16_t, int>;
+        else if ((opt == 0 && iset >= 2) || opt == 2)
+            d->processor = process_sse2<uint16_t, int>;
+#endif
+    } else {
+        d->processor = process_c<float, void>;
+
+#ifdef VS_TARGET_CPU_X86
+        if ((opt == 0 && iset >= 8) || opt == 5)
+            d->processor = process_avx2<float, float>;
+        else if ((opt == 0 && iset >= 7) || opt == 4)
+            d->processor = process_avx<float, float>;
+        else if ((opt == 0 && iset >= 5) || opt == 3)
+            d->processor = process_sse4<float, float>;
+        else if ((opt == 0 && iset >= 2) || opt == 2)
+            d->processor = process_sse2<float, float>;
+#endif
+    }
 }
 
 static void VS_CC eedi3Init(VSMap *in, VSMap *out, void **instanceData, VSNode *node, VSCore *core, const VSAPI *vsapi) {
@@ -402,12 +426,7 @@ static const VSFrameRef *VS_CC eedi3GetFrame(int n, int activationReason, void *
             field_n = field;
         }
 
-        if (d->vi.format->bytesPerSample == 1)
-            process<uint8_t>(src, scp, dst, pad, field_n, d, vsapi);
-        else if (d->vi.format->bytesPerSample == 2)
-            process<uint16_t>(src, scp, dst, pad, field_n, d, vsapi);
-        else
-            process<float>(src, scp, dst, pad, field_n, d, vsapi);
+        d->processor(src, scp, dst, pad, field_n, d, vsapi);
 
         VSMap * props = vsapi->getFramePropsRW(dst);
         vsapi->propSetInt(props, "_FieldBased", 0, paReplace);

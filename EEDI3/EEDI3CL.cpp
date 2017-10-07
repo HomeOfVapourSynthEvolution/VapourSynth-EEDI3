@@ -32,8 +32,6 @@
 
 template<typename T> extern void processCL_sse2(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3CLData *, const VSAPI *);
 
-template<typename T> static void (*process)(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3CLData *, const VSAPI *) = nullptr;
-
 template<typename T>
 static void processCL_c(const VSFrameRef * src, const VSFrameRef * scp, VSFrameRef * dst, VSFrameRef ** pad, const int field_n, const EEDI3CLData * d, const VSAPI * vsapi) {
     for (int plane = 0; plane < d->vi.format->numPlanes; plane++) {
@@ -139,17 +137,28 @@ static void processCL_c(const VSFrameRef * src, const VSFrameRef * scp, VSFrameR
 }
 
 static void selectFunctions(const unsigned opt, EEDI3CLData * d) noexcept {
-    process<uint8_t> = processCL_c<uint8_t>;
-    process<uint16_t> = processCL_c<uint16_t>;
-    process<float> = processCL_c<float>;
     d->vectorSize = 1;
 
     const int iset = instrset_detect();
-    if ((opt == 0 && iset >= 2) || opt == 2) {
-        process<uint8_t> = processCL_sse2<uint8_t>;
-        process<uint16_t> = processCL_sse2<uint16_t>;
-        process<float> = processCL_sse2<float>;
+
+    if ((opt == 0 && iset >= 2) || opt == 2)
         d->vectorSize = 4;
+
+    if (d->vi.format->bytesPerSample == 1) {
+        d->processor = processCL_c<uint8_t>;
+
+        if ((opt == 0 && iset >= 2) || opt == 2)
+            d->processor = processCL_sse2<uint8_t>;
+    } else if (d->vi.format->bytesPerSample == 2) {
+        d->processor = processCL_c<uint16_t>;
+
+        if ((opt == 0 && iset >= 2) || opt == 2)
+            d->processor = processCL_sse2<uint16_t>;
+    } else {
+        d->processor = processCL_c<float>;
+
+        if ((opt == 0 && iset >= 2) || opt == 2)
+            d->processor = processCL_sse2<float>;
     }
 }
 
@@ -274,12 +283,7 @@ static const VSFrameRef *VS_CC eedi3clGetFrame(int n, int activationReason, void
         }
 
         try {
-            if (d->vi.format->bytesPerSample == 1)
-                process<uint8_t>(src, scp, dst, pad, field_n, d, vsapi);
-            else if (d->vi.format->bytesPerSample == 2)
-                process<uint16_t>(src, scp, dst, pad, field_n, d, vsapi);
-            else
-                process<float>(src, scp, dst, pad, field_n, d, vsapi);
+            d->processor(src, scp, dst, pad, field_n, d, vsapi);
         } catch (const compute::opencl_error & error) {
             vsapi->setFilterError(("EEDI3CL: " + error.error_string()).c_str(), frameCtx);
             vsapi->freeFrame(src);

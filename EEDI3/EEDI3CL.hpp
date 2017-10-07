@@ -28,4 +28,5 @@ struct EEDI3CLData {
     std::unordered_map<std::thread::id, compute::buffer> ccosts;
     std::unordered_map<std::thread::id, float *> pcosts, tline;
     std::unordered_map<std::thread::id, int *> pbackt, fpath, dmap;
+    void (*processor)(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3CLData *, const VSAPI *);
 };
