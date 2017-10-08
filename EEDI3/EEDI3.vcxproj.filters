@@ -30,6 +30,9 @@
     <ClCompile Include="EEDI3_AVX2.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="EEDI3_AVX512.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="EEDI3CL.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

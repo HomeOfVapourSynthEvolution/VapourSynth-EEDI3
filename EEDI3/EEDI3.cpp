@@ -33,6 +33,7 @@ template<typename T1, typename T2> extern void process_sse2(const VSFrameRef *, 
 template<typename T1, typename T2> extern void process_sse4(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3Data *, const VSAPI *) noexcept;
 template<typename T1, typename T2> extern void process_avx(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3Data *, const VSAPI *) noexcept;
 template<typename T1, typename T2> extern void process_avx2(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3Data *, const VSAPI *) noexcept;
+template<typename T1, typename T2> extern void process_avx512(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3Data *, const VSAPI *) noexcept;
 #endif
 
 template<typename T>
@@ -249,25 +250,30 @@ static void process_c(const VSFrameRef * src, const VSFrameRef * scp, VSFrameRef
 
 static void selectFunctions(const unsigned opt, EEDI3Data * d) noexcept {
     d->vectorSize = 1;
+    d->alignment = 1;
 
 #ifdef VS_TARGET_CPU_X86
     const int iset = instrset_detect();
 
-    if ((opt == 0 && iset >= 8) || opt == 5)
+    if ((opt == 0 && iset >= 9) || opt == 6) {
+        d->vectorSize = 16;
+        d->alignment = 64;
+    } else if ((opt == 0 && iset >= 7) || opt >= 4) {
         d->vectorSize = 8;
-    else if ((opt == 0 && iset >= 7) || opt == 4)
-        d->vectorSize = 8;
-    else if ((opt == 0 && iset >= 5) || opt == 3)
+        d->alignment = 32;
+    } else if ((opt == 0 && iset >= 2) || opt >= 2) {
         d->vectorSize = 4;
-    else if ((opt == 0 && iset >= 2) || opt == 2)
-        d->vectorSize = 4;
+        d->alignment = 16;
+    }
 #endif
 
     if (d->vi.format->bytesPerSample == 1) {
         d->processor = process_c<uint8_t, void>;
 
 #ifdef VS_TARGET_CPU_X86
-        if ((opt == 0 && iset >= 8) || opt == 5)
+        if ((opt == 0 && iset >= 9) || opt == 6)
+            d->processor = process_avx512<uint8_t, int>;
+        else if ((opt == 0 && iset >= 8) || opt == 5)
             d->processor = process_avx2<uint8_t, int>;
         else if ((opt == 0 && iset >= 7) || opt == 4)
             d->processor = process_avx<uint8_t, float>;
@@ -280,7 +286,9 @@ static void selectFunctions(const unsigned opt, EEDI3Data * d) noexcept {
         d->processor = process_c<uint16_t, void>;
 
 #ifdef VS_TARGET_CPU_X86
-        if ((opt == 0 && iset >= 8) || opt == 5)
+        if ((opt == 0 && iset >= 9) || opt == 6)
+            d->processor = process_avx512<uint16_t, int>;
+        else if ((opt == 0 && iset >= 8) || opt == 5)
             d->processor = process_avx2<uint16_t, int>;
         else if ((opt == 0 && iset >= 7) || opt == 4)
             d->processor = process_avx<uint16_t, float>;
@@ -293,7 +301,9 @@ static void selectFunctions(const unsigned opt, EEDI3Data * d) noexcept {
         d->processor = process_c<float, void>;
 
 #ifdef VS_TARGET_CPU_X86
-        if ((opt == 0 && iset >= 8) || opt == 5)
+        if ((opt == 0 && iset >= 9) || opt == 6)
+            d->processor = process_avx512<float, float>;
+        else if ((opt == 0 && iset >= 8) || opt == 5)
             d->processor = process_avx2<float, float>;
         else if ((opt == 0 && iset >= 7) || opt == 4)
             d->processor = process_avx<float, float>;
@@ -328,7 +338,7 @@ static const VSFrameRef *VS_CC eedi3GetFrame(int n, int activationReason, void *
 
             if (!d->srcVector.count(threadId)) {
                 if (d->vectorSize != 1) {
-                    int * srcVector = vs_aligned_malloc<int>((d->vi.width + 24) * 4 * d->vectorSize * sizeof(int), 32);
+                    int * srcVector = vs_aligned_malloc<int>((d->vi.width + 24) * 4 * d->vectorSize * sizeof(int), d->alignment);
                     if (!srcVector)
                         throw std::string{ "malloc failure (srcVector)" };
                     d->srcVector.emplace(threadId, srcVector);
@@ -338,21 +348,21 @@ static const VSFrameRef *VS_CC eedi3GetFrame(int n, int activationReason, void *
             }
 
             if (!d->ccosts.count(threadId)) {
-                float * ccosts = vs_aligned_malloc<float>(d->vi.width * d->tpitchVector * sizeof(float), 32);
+                float * ccosts = vs_aligned_malloc<float>(d->vi.width * d->tpitchVector * sizeof(float), d->alignment);
                 if (!ccosts)
                     throw std::string{ "malloc failure (ccosts)" };
                 d->ccosts.emplace(threadId, ccosts);
             }
 
             if (!d->pcosts.count(threadId)) {
-                float * pcosts = vs_aligned_malloc<float>(d->vi.width * d->tpitchVector * sizeof(float), 32);
+                float * pcosts = vs_aligned_malloc<float>(d->vi.width * d->tpitchVector * sizeof(float), d->alignment);
                 if (!pcosts)
                     throw std::string{ "malloc failure (pcosts)" };
                 d->pcosts.emplace(threadId, pcosts);
             }
 
             if (!d->pbackt.count(threadId)) {
-                int * pbackt = vs_aligned_malloc<int>(d->vi.width * d->tpitchVector * sizeof(int), 32);
+                int * pbackt = vs_aligned_malloc<int>(d->vi.width * d->tpitchVector * sizeof(int), d->alignment);
                 if (!pbackt)
                     throw std::string{ "malloc failure (pbackt)" };
                 d->pbackt.emplace(threadId, pbackt);
@@ -596,8 +606,8 @@ void VS_CC eedi3Create(const VSMap *in, VSMap *out, void *userData, VSCore *core
         if (d->vcheck && (vthresh0 <= 0.f || vthresh1 <= 0.f || d->vthresh2 <= 0.f))
             throw std::string{ "vthresh0, vthresh1 and vthresh2 must be greater than 0.0" };
 
-        if (opt < 0 || opt > 5)
-            throw std::string{ "opt must be 0, 1, 2, 3, 4 or 5" };
+        if (opt < 0 || opt > 6)
+            throw std::string{ "opt must be 0, 1, 2, 3, 4, 5 or 6" };
 
         if (d->field > 1) {
             if (d->vi.numFrames > INT_MAX / 2)

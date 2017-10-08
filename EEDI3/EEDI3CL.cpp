@@ -198,14 +198,14 @@ static const VSFrameRef *VS_CC eedi3clGetFrame(int n, int activationReason, void
                 d->ccosts.emplace(threadId, compute::buffer{ d->ctx, d->vi.width * d->tpitchVector * sizeof(cl_float), CL_MEM_WRITE_ONLY | CL_MEM_ALLOC_HOST_PTR | CL_MEM_HOST_READ_ONLY });
 
             if (!d->pcosts.count(threadId)) {
-                float * pcosts = vs_aligned_malloc<float>(d->vi.width * d->tpitchVector * sizeof(float), 32);
+                float * pcosts = vs_aligned_malloc<float>(d->vi.width * d->tpitchVector * sizeof(float), 16);
                 if (!pcosts)
                     throw std::string{ "malloc failure (pcosts)" };
                 d->pcosts.emplace(threadId, pcosts);
             }
 
             if (!d->pbackt.count(threadId)) {
-                int * pbackt = vs_aligned_malloc<int>(d->vi.width * d->tpitchVector * sizeof(int), 32);
+                int * pbackt = vs_aligned_malloc<int>(d->vi.width * d->tpitchVector * sizeof(int), 16);
                 if (!pbackt)
                     throw std::string{ "malloc failure (pbackt)" };
                 d->pbackt.emplace(threadId, pbackt);

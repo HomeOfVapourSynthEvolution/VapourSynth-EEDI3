@@ -3,6 +3,7 @@
 #include "shared.hpp"
 
 #ifdef VS_TARGET_CPU_X86
+#define MAX_VECTOR_SIZE 512
 #include "vectorclass/vectorclass.h"
 
 template<typename T1, typename T2>
@@ -45,7 +46,7 @@ struct EEDI3Data {
     int field, nrad, mdis, vcheck;
     bool dh, process[3], ucubic, cost3;
     float alpha, beta, gamma, vthresh2;
-    int peak, vectorSize, tpitch, mdisVector, tpitchVector;
+    int peak, vectorSize, tpitch, mdisVector, tpitchVector, alignment;
     float remainingWeight, rcpVthresh0, rcpVthresh1, rcpVthresh2;
     std::unordered_map<std::thread::id, float *> ccosts, pcosts, tline;
     std::unordered_map<std::thread::id, int *> srcVector, pbackt, fpath, dmap;
