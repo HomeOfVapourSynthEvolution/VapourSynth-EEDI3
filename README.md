@@ -83,8 +83,7 @@ Usage
   * 2 = use sse2
   * 3 = use sse4.1
   * 4 = use avx
-  * 5 = use avx2
-  * 6 = use avx512
+  * 5 = use avx512
 
 ---
 

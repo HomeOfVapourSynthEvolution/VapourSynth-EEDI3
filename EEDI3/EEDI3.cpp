@@ -32,7 +32,6 @@
 template<typename T1, typename T2> extern void process_sse2(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3Data *, const VSAPI *) noexcept;
 template<typename T1, typename T2> extern void process_sse4(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3Data *, const VSAPI *) noexcept;
 template<typename T1, typename T2> extern void process_avx(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3Data *, const VSAPI *) noexcept;
-template<typename T1, typename T2> extern void process_avx2(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3Data *, const VSAPI *) noexcept;
 template<typename T1, typename T2> extern void process_avx512(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3Data *, const VSAPI *) noexcept;
 #endif
 
@@ -255,10 +254,10 @@ static void selectFunctions(const unsigned opt, EEDI3Data * d) noexcept {
 #ifdef VS_TARGET_CPU_X86
     const int iset = instrset_detect();
 
-    if ((opt == 0 && iset >= 9) || opt == 6) {
+    if ((opt == 0 && iset >= 9) || opt == 5) {
         d->vectorSize = 16;
         d->alignment = 64;
-    } else if ((opt == 0 && iset >= 7) || opt >= 4) {
+    } else if ((opt == 0 && iset >= 7) || opt == 4) {
         d->vectorSize = 8;
         d->alignment = 32;
     } else if ((opt == 0 && iset >= 2) || opt >= 2) {
@@ -271,10 +270,8 @@ static void selectFunctions(const unsigned opt, EEDI3Data * d) noexcept {
         d->processor = process_c<uint8_t, void>;
 
 #ifdef VS_TARGET_CPU_X86
-        if ((opt == 0 && iset >= 9) || opt == 6)
+        if ((opt == 0 && iset >= 9) || opt == 5)
             d->processor = process_avx512<uint8_t, int>;
-        else if ((opt == 0 && iset >= 8) || opt == 5)
-            d->processor = process_avx2<uint8_t, int>;
         else if ((opt == 0 && iset >= 7) || opt == 4)
             d->processor = process_avx<uint8_t, float>;
         else if ((opt == 0 && iset >= 5) || opt == 3)
@@ -286,10 +283,8 @@ static void selectFunctions(const unsigned opt, EEDI3Data * d) noexcept {
         d->processor = process_c<uint16_t, void>;
 
 #ifdef VS_TARGET_CPU_X86
-        if ((opt == 0 && iset >= 9) || opt == 6)
+        if ((opt == 0 && iset >= 9) || opt == 5)
             d->processor = process_avx512<uint16_t, int>;
-        else if ((opt == 0 && iset >= 8) || opt == 5)
-            d->processor = process_avx2<uint16_t, int>;
         else if ((opt == 0 && iset >= 7) || opt == 4)
             d->processor = process_avx<uint16_t, float>;
         else if ((opt == 0 && iset >= 5) || opt == 3)
@@ -301,10 +296,8 @@ static void selectFunctions(const unsigned opt, EEDI3Data * d) noexcept {
         d->processor = process_c<float, void>;
 
 #ifdef VS_TARGET_CPU_X86
-        if ((opt == 0 && iset >= 9) || opt == 6)
+        if ((opt == 0 && iset >= 9) || opt == 5)
             d->processor = process_avx512<float, float>;
-        else if ((opt == 0 && iset >= 8) || opt == 5)
-            d->processor = process_avx2<float, float>;
         else if ((opt == 0 && iset >= 7) || opt == 4)
             d->processor = process_avx<float, float>;
         else if ((opt == 0 && iset >= 5) || opt == 3)
@@ -606,8 +599,8 @@ void VS_CC eedi3Create(const VSMap *in, VSMap *out, void *userData, VSCore *core
         if (d->vcheck && (vthresh0 <= 0.f || vthresh1 <= 0.f || d->vthresh2 <= 0.f))
             throw std::string{ "vthresh0, vthresh1 and vthresh2 must be greater than 0.0" };
 
-        if (opt < 0 || opt > 6)
-            throw std::string{ "opt must be 0, 1, 2, 3, 4, 5 or 6" };
+        if (opt < 0 || opt > 5)
+            throw std::string{ "opt must be 0, 1, 2, 3, 4 or 5" };
 
         if (d->field > 1) {
             if (d->vi.numFrames > INT_MAX / 2)
