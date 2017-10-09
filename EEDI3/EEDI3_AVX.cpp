@@ -133,7 +133,7 @@ void process_avx(const VSFrameRef * src, const VSFrameRef * scp, VSFrameRef * ds
 
                         const Vec8f z = bval + Vec8f().load_a(tT + u * d->vectorSize);
                         min(z, FLT_MAX * 0.9f).store_a(pT + u * d->vectorSize);
-                        idx.store_a(piT + u * d->vectorSize);
+                        idx.stream(piT + u * d->vectorSize);
                     }
                 }
 

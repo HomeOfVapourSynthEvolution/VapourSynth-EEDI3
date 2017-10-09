@@ -126,6 +126,11 @@ public:
         _mm_store_si128((__m128i*)p,     y0);
         _mm_store_si128((__m128i*)p + 1, y1);
     }
+    // Member function to store into array using a non-temporal memory hint, aligned by 32
+    void stream(void * p) const {
+        _mm_stream_si128((__m128i*)p,     y0);
+        _mm_stream_si128((__m128i*)p + 1, y1);
+    }
     // Member function to change a single bit
     // Note: This function is inefficient. Use load function if changing more than one bit
     Vec256b const & set_bit(uint32_t index, int value) {

@@ -68,7 +68,7 @@ void processCL_sse2(const VSFrameRef * src, const VSFrameRef * scp, VSFrameRef *
 
                         const Vec4f z = bval + Vec4f().load(tT + u * d->vectorSize);
                         min(z, FLT_MAX * 0.9f).store_a(pT + u * d->vectorSize);
-                        idx.store_a(piT + u * d->vectorSize);
+                        idx.stream(piT + u * d->vectorSize);
                     }
                 }
 
