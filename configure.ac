@@ -49,7 +49,7 @@ AS_IF(
       [
        AC_DEFINE([HAVE_OPENCL])
 
-       AC_SUBST([OPENCLLDFLAGS], ["-lOpenCL"])
+       AC_SUBST([OPENCLLDFLAGS], ["-lboost_filesystem -lboost_system -lOpenCL"])
       ]
 )
 
