@@ -1,4 +1,4 @@
-AC_INIT([EEDI3], [2], [https://github.com/HomeOfVapourSynthEvolution/VapourSynth-EEDI3/issues], [EEDI3], [https://github.com/HomeOfVapourSynthEvolution/VapourSynth-EEDI3/])
+AC_INIT([EEDI3], [3], [https://github.com/HomeOfVapourSynthEvolution/VapourSynth-EEDI3/issues], [EEDI3], [https://github.com/HomeOfVapourSynthEvolution/VapourSynth-EEDI3/])
 
 : ${CXXFLAGS=""}
 

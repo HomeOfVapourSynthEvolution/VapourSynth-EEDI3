@@ -35,7 +35,7 @@ libavx_la_SOURCES = EEDI3/EEDI3_AVX.cpp
 libavx_la_CXXFLAGS = $(AM_CXXFLAGS) -mavx
 
 libavx512_la_SOURCES = EEDI3/EEDI3_AVX512.cpp
-libavx512_la_CXXFLAGS = $(AM_CXXFLAGS) -mavx512f -mfma
+libavx512_la_CXXFLAGS = $(AM_CXXFLAGS) -mavx512f -mavx512cd -mfma
 
 libeedi3m_la_LIBADD = libsse4.la libavx.la libavx512.la
 endif
