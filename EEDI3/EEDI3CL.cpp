@@ -25,6 +25,7 @@
 */
 
 #include <clocale>
+#include <cstdio>
 #include <memory>
 #include <string>
 
@@ -564,13 +565,17 @@ void VS_CC eedi3clCreate(const VSMap *in, VSMap *out, void *userData, VSCore *co
         d->program = compute::program::create_with_source(source, d->ctx);
         try {
             std::setlocale(LC_ALL, "C");
+            char buf[100];
             std::string options{ "-cl-single-precision-constant -cl-denorms-are-zero -cl-fast-relaxed-math -Werror" };
-            options += " -D ALPHA=" + std::to_string(alpha);
-            options += " -D BETA=" + std::to_string(beta);
+            std::snprintf(buf, 100, "%.20f", alpha);
+            options += " -D ALPHA=" + std::string{ buf };
+            std::snprintf(buf, 100, "%.20f", beta);
+            options += " -D BETA=" + std::string{ buf };
             options += " -D NRAD=" + std::to_string(nrad);
             options += " -D MDIS=" + std::to_string(d->mdis);
             options += " -D COST3=" + std::to_string(cost3);
-            options += " -D REMAINING_WEIGHT=" + std::to_string(remainingWeight);
+            std::snprintf(buf, 100, "%.20f", remainingWeight);
+            options += " -D REMAINING_WEIGHT=" + std::string{ buf };
             options += " -D TPITCH=" + std::to_string(d->tpitch);
             options += " -D VECTOR_SIZE=" + std::to_string(d->vectorSize);
             options += " -D MDIS_VECTOR=" + std::to_string(d->mdisVector);
