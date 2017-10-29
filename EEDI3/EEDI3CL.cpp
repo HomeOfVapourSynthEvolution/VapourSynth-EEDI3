@@ -24,6 +24,7 @@
 **   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
+#include <clocale>
 #include <memory>
 #include <string>
 
@@ -562,6 +563,7 @@ void VS_CC eedi3clCreate(const VSMap *in, VSMap *out, void *userData, VSCore *co
 
         d->program = compute::program::create_with_source(source, d->ctx);
         try {
+            std::setlocale(LC_ALL, "C");
             std::string options{ "-cl-single-precision-constant -cl-denorms-are-zero -cl-fast-relaxed-math -Werror" };
             options += " -D ALPHA=" + std::to_string(alpha);
             options += " -D BETA=" + std::to_string(beta);
@@ -573,6 +575,7 @@ void VS_CC eedi3clCreate(const VSMap *in, VSMap *out, void *userData, VSCore *co
             options += " -D VECTOR_SIZE=" + std::to_string(d->vectorSize);
             options += " -D MDIS_VECTOR=" + std::to_string(d->mdisVector);
             options += " -D TPITCH_VECTOR=" + std::to_string(d->tpitchVector);
+            std::setlocale(LC_ALL, "");
             d->program.build(options);
         } catch (const compute::opencl_error & error) {
             throw error.error_string() + "\n" + d->program.build_log();
