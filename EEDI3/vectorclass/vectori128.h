@@ -1510,7 +1510,7 @@ static inline Vec8sb operator != (Vec8s const & a, Vec8s const & b) {
 #ifdef __XOP__  // AMD XOP instruction set
     return (Vec8sb)_mm_comneq_epi16(a,b);
 #else  // SSE2 instruction set
-    return Vec8sb (~(a == b));
+    return Vec8sb(Vec8s(~(a == b)));
 #endif
 }
 
