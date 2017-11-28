@@ -1,4 +1,4 @@
-AC_INIT([EEDI3], [3], [https://github.com/HomeOfVapourSynthEvolution/VapourSynth-EEDI3/issues], [EEDI3], [https://github.com/HomeOfVapourSynthEvolution/VapourSynth-EEDI3/])
+AC_INIT([EEDI3], [4], [https://github.com/HomeOfVapourSynthEvolution/VapourSynth-EEDI3/issues], [EEDI3], [https://github.com/HomeOfVapourSynthEvolution/VapourSynth-EEDI3/])
 
 : ${CXXFLAGS=""}
 
@@ -7,12 +7,13 @@ AM_SILENT_RULES([yes])
 
 LT_INIT([disable-static win32-dll])
 
-AC_PROG_CXX
-
 AC_CANONICAL_HOST
+
+AC_PROG_CXX
 
 
 X86="false"
+OPENCLLDFLAGS="-lOpenCL"
 
 AS_CASE(
         [$host_cpu],
@@ -22,6 +23,10 @@ AS_CASE(
 
 AS_CASE(
         [$host_os],
+        [darwin*],
+        [
+         OPENCLLDFLAGS="-framework OpenCL"
+        ],
         [cygwin*|mingw*],
         [
          AS_IF(
@@ -49,7 +54,7 @@ AS_IF(
       [
        AC_DEFINE([HAVE_OPENCL])
 
-       AC_SUBST([OPENCLLDFLAGS], ["-lboost_filesystem -lboost_system -lOpenCL"])
+       AC_SUBST([OPENCLLDFLAGS], ["-lboost_filesystem -lboost_system $OPENCLLDFLAGS"])
       ]
 )
 
