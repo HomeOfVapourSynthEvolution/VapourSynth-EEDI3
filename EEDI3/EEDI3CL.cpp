@@ -357,7 +357,7 @@ void VS_CC eedi3clCreate(const VSMap *in, VSMap *out, void *userData, VSCore *co
     try {
         if (!isConstantFormat(&d->vi) || (d->vi.format->sampleType == stInteger && d->vi.format->bitsPerSample > 16) ||
             (d->vi.format->sampleType == stFloat && d->vi.format->bitsPerSample != 32))
-            throw std::string{ "only constant format 8-16 bits integer and 32 bits float input supported" };
+            throw std::string{ "only constant format 8-16 bit integer and 32 bit float input supported" };
 
         d->field = int64ToIntS(vsapi->propGetInt(in, "field", 0, nullptr));
 
@@ -366,7 +366,7 @@ void VS_CC eedi3clCreate(const VSMap *in, VSMap *out, void *userData, VSCore *co
         const int m = vsapi->propNumElements(in, "planes");
 
         for (int i = 0; i < 3; i++)
-            d->process[i] = m <= 0;
+            d->process[i] = (m <= 0);
 
         for (int i = 0; i < m; i++) {
             const int n = int64ToIntS(vsapi->propGetInt(in, "planes", i, nullptr));
@@ -523,6 +523,17 @@ void VS_CC eedi3clCreate(const VSMap *in, VSMap *out, void *userData, VSCore *co
                 throw std::string{ "sclip's number of frames doesn't match" };
         }
 
+        const unsigned numThreads = vsapi->getCoreInfo(core)->numThreads;
+        d->queue.reserve(numThreads);
+        d->calculateConnectionCosts.reserve(numThreads);
+        d->src.reserve(numThreads);
+        d->ccosts.reserve(numThreads);
+        d->pcosts.reserve(numThreads);
+        d->pbackt.reserve(numThreads);
+        d->fpath.reserve(numThreads);
+        d->dmap.reserve(numThreads);
+        d->tline.reserve(numThreads);
+
         if (d->vi.format->sampleType == stInteger) {
             d->peak = (1 << d->vi.format->bitsPerSample) - 1;
             const float scale = d->peak / 255.f;
@@ -536,17 +547,6 @@ void VS_CC eedi3clCreate(const VSMap *in, VSMap *out, void *userData, VSCore *co
             vthresh0 /= 255.f;
             vthresh1 /= 255.f;
         }
-
-        const unsigned numThreads = vsapi->getCoreInfo(core)->numThreads;
-        d->queue.reserve(numThreads);
-        d->calculateConnectionCosts.reserve(numThreads);
-        d->src.reserve(numThreads);
-        d->ccosts.reserve(numThreads);
-        d->pcosts.reserve(numThreads);
-        d->pbackt.reserve(numThreads);
-        d->fpath.reserve(numThreads);
-        d->dmap.reserve(numThreads);
-        d->tline.reserve(numThreads);
 
         selectFunctions(opt, d.get());
 
@@ -608,15 +608,15 @@ void VS_CC eedi3clCreate(const VSMap *in, VSMap *out, void *userData, VSCore *co
         try {
             std::setlocale(LC_ALL, "C");
             char buf[100];
-            std::string options{ "-cl-single-precision-constant -cl-denorms-are-zero -cl-fast-relaxed-math -Werror" };
-            std::snprintf(buf, 100, "%.20f", alpha);
+            std::string options{ "-cl-denorms-are-zero -cl-fast-relaxed-math -Werror" };
+            std::snprintf(buf, 100, "%.20ff", alpha);
             options += " -D ALPHA=" + std::string{ buf };
-            std::snprintf(buf, 100, "%.20f", beta);
+            std::snprintf(buf, 100, "%.20ff", beta);
             options += " -D BETA=" + std::string{ buf };
             options += " -D NRAD=" + std::to_string(nrad);
             options += " -D MDIS=" + std::to_string(d->mdis);
             options += " -D COST3=" + std::to_string(cost3);
-            std::snprintf(buf, 100, "%.20f", remainingWeight);
+            std::snprintf(buf, 100, "%.20ff", remainingWeight);
             options += " -D REMAINING_WEIGHT=" + std::string{ buf };
             options += " -D TPITCH=" + std::to_string(d->tpitch);
             options += " -D VECTOR_SIZE=" + std::to_string(d->vectorSize);
