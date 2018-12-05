@@ -1113,6 +1113,11 @@ static inline Vec16uc min(Vec16uc const & a, Vec16uc const & b) {
     return _mm_min_epu8(a,b);
 }
 
+// function avg: (a + b + 1) >> 1
+static inline Vec16uc avg(Vec16uc const & a, Vec16uc const & b) {
+    return _mm_avg_epu8(a,b);
+}
+
 
     
 /*****************************************************************************
@@ -1975,6 +1980,11 @@ static inline Vec8us min(Vec8us const & a, Vec8us const & b) {
     __m128i m1      = _mm_min_epi16(a1,b1);                // signed min
     return  _mm_xor_si128(m1,signbit);                     // sub 0x8000
 #endif
+}
+
+// function avg: (a + b + 1) >> 1
+static inline Vec8us avg(Vec8us const & a, Vec8us const & b) {
+    return _mm_avg_epu16(a,b);
 }
 
 
