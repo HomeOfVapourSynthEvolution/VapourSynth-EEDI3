@@ -104,17 +104,9 @@ Usage
 Compilation
 ===========
 
-Requires `Boost` unless specify `-D opencl=false` (for meson) or `--disable-opencl` (for configure).
+Requires `Boost` unless specify `-Dopencl=false`.
 
 ```
 meson build
 ninja -C build
-```
-
-or
-
-```
-./autogen.sh
-./configure
-make
 ```

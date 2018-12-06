@@ -1,7 +1,7 @@
 project('EEDI3', 'cpp',
   default_options : ['buildtype=release', 'b_ndebug=if-release', 'cpp_std=c++14'],
   meson_version : '>=0.48.0',
-  version : '3'
+  version : '4'
 )
 
 add_project_arguments('-Wno-unused-variable', '-ffast-math', language : 'cpp')
@@ -58,19 +58,19 @@ if host_machine.cpu_family().startswith('x86')
   endif
 
   libs += static_library('sse4', 'EEDI3/EEDI3_SSE4.cpp',
-    dependencies : [vapoursynth_dep],
+    dependencies : vapoursynth_dep,
     cpp_args : ['-msse4.1'],
     gnu_symbol_visibility : 'hidden'
   )
 
   libs += static_library('avx', 'EEDI3/EEDI3_AVX.cpp',
-    dependencies : [vapoursynth_dep],
+    dependencies : vapoursynth_dep,
     cpp_args : ['-mavx'],
     gnu_symbol_visibility : 'hidden'
   )
 
   libs += static_library('avx512', 'EEDI3/EEDI3_AVX512.cpp',
-    dependencies : [vapoursynth_dep],
+    dependencies : vapoursynth_dep,
     cpp_args : ['-mavx512f', '-mavx512cd', '-mfma'],
     gnu_symbol_visibility : 'hidden'
   )
