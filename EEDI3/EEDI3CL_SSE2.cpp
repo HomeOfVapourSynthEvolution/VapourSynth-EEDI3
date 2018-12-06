@@ -2,7 +2,7 @@
 #include "EEDI3CL.hpp"
 
 template<typename T>
-void processCL_sse2(const VSFrameRef * src, const VSFrameRef * scp, VSFrameRef * dst, VSFrameRef ** pad, const int field_n, const EEDI3CLData * d, const VSAPI * vsapi) {
+void filterCL_sse2(const VSFrameRef * src, const VSFrameRef * scp, VSFrameRef * dst, VSFrameRef ** pad, const int field_n, const EEDI3CLData * d, const VSAPI * vsapi) {
     for (int plane = 0; plane < d->vi.format->numPlanes; plane++) {
         if (d->process[plane]) {
             copyPad<T>(src, pad[plane], plane, 1 - field_n, d->dh, vsapi);
@@ -113,7 +113,7 @@ void processCL_sse2(const VSFrameRef * src, const VSFrameRef * scp, VSFrameRef *
     }
 }
 
-template void processCL_sse2<uint8_t>(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3CLData *, const VSAPI *);
-template void processCL_sse2<uint16_t>(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3CLData *, const VSAPI *);
-template void processCL_sse2<float>(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3CLData *, const VSAPI *);
+template void filterCL_sse2<uint8_t>(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3CLData *, const VSAPI *);
+template void filterCL_sse2<uint16_t>(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3CLData *, const VSAPI *);
+template void filterCL_sse2<float>(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3CLData *, const VSAPI *);
 #endif

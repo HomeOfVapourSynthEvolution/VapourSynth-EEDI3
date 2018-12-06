@@ -81,7 +81,7 @@ inline void interpolate(const float * src3p, const float * src1p, const float * 
         if (ucubic && x >= absDir3 && x <= width - 1 - absDir3)
             dstp[x] = 0.5625f * (src1p[x + dir] + src1n[x - dir]) - 0.0625f * (src3p[x + dir3] + src3n[x - dir3]);
         else
-            dstp[x] = (src1p[x + dir] + src1n[x - dir]) * 0.5f;
+            dstp[x] = (src1p[x + dir] + src1n[x - dir]) / 2.f;
     }
 }
 
@@ -180,9 +180,9 @@ void vCheck(const float * srcp, const float * scpp, float * VS_RESTRICT dstp, co
                     continue;
                 }
 
-                const float it = (dst2p[x + dirc] + dstp[x - dirc]) * 0.5f;
+                const float it = (dst2p[x + dirc] + dstp[x - dirc]) / 2.f;
                 const float vt = std::abs(dst2p[x + dirc] - dst1p[x + dirc]) + std::abs(dstp[x + dirc] - dst1p[x + dirc]);
-                const float ib = (dstp[x + dirc] + dst2n[x - dirc]) * 0.5f;
+                const float ib = (dstp[x + dirc] + dst2n[x - dirc]) / 2.f;
                 const float vb = std::abs(dst2n[x - dirc] - dst1n[x - dirc]) + std::abs(dstp[x - dirc] - dst1n[x - dirc]);
                 const float vc = std::abs(dstp[x] - dst1p[x]) + std::abs(dstp[x] - dst1n[x]);
 
@@ -191,8 +191,8 @@ void vCheck(const float * srcp, const float * scpp, float * VS_RESTRICT dstp, co
                 const float d2 = std::abs(vt - vc);
                 const float d3 = std::abs(vb - vc);
 
-                const float mdiff0 = (vcheck == 1) ? std::min(d0, d1) : (vcheck == 2 ? (d0 + d1) * 0.5f : std::max(d0, d1));
-                const float mdiff1 = (vcheck == 1) ? std::min(d2, d3) : (vcheck == 2 ? (d2 + d3) * 0.5f : std::max(d2, d3));
+                const float mdiff0 = (vcheck == 1) ? std::min(d0, d1) : (vcheck == 2 ? (d0 + d1) / 2.f : std::max(d0, d1));
+                const float mdiff1 = (vcheck == 1) ? std::min(d2, d3) : (vcheck == 2 ? (d2 + d3) / 2.f : std::max(d2, d3));
 
                 const float a0 = mdiff0 * rcpVthresh0;
                 const float a1 = mdiff1 * rcpVthresh1;

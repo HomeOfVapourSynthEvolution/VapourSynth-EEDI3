@@ -72,7 +72,7 @@ static inline void calculateConnectionCosts(const void * srcp, float * ccosts, c
 }
 
 template<typename T1, typename T2>
-void process_avx(const VSFrameRef * src, const VSFrameRef * scp, VSFrameRef * dst, VSFrameRef ** pad, const int field_n, const EEDI3Data * d, const VSAPI * vsapi) noexcept {
+void filter_avx(const VSFrameRef * src, const VSFrameRef * scp, VSFrameRef * dst, VSFrameRef ** pad, const int field_n, const EEDI3Data * d, const VSAPI * vsapi) noexcept {
     for (int plane = 0; plane < d->vi.format->numPlanes; plane++) {
         if (d->process[plane]) {
             copyPad<T1>(src, pad[plane], plane, 1 - field_n, d->dh, vsapi);
@@ -175,7 +175,7 @@ void process_avx(const VSFrameRef * src, const VSFrameRef * scp, VSFrameRef * ds
     }
 }
 
-template void process_avx<uint8_t, float>(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3Data *, const VSAPI *) noexcept;
-template void process_avx<uint16_t, float>(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3Data *, const VSAPI *) noexcept;
-template void process_avx<float, float>(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3Data *, const VSAPI *) noexcept;
+template void filter_avx<uint8_t, float>(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3Data *, const VSAPI *) noexcept;
+template void filter_avx<uint16_t, float>(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3Data *, const VSAPI *) noexcept;
+template void filter_avx<float, float>(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3Data *, const VSAPI *) noexcept;
 #endif

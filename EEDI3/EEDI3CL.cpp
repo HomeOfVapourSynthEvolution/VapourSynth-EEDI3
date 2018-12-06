@@ -32,10 +32,10 @@
 #include "EEDI3CL.hpp"
 #include "EEDI3CL.cl"
 
-template<typename T> extern void processCL_sse2(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3CLData *, const VSAPI *);
+template<typename T> extern void filterCL_sse2(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3CLData *, const VSAPI *);
 
 template<typename T>
-static void processCL_c(const VSFrameRef * src, const VSFrameRef * scp, VSFrameRef * dst, VSFrameRef ** pad, const int field_n, const EEDI3CLData * d, const VSAPI * vsapi) {
+static void filterCL_c(const VSFrameRef * src, const VSFrameRef * scp, VSFrameRef * dst, VSFrameRef ** pad, const int field_n, const EEDI3CLData * d, const VSAPI * vsapi) {
     for (int plane = 0; plane < d->vi.format->numPlanes; plane++) {
         if (d->process[plane]) {
             copyPad<T>(src, pad[plane], plane, 1 - field_n, d->dh, vsapi);
@@ -148,20 +148,20 @@ static void selectFunctions(const unsigned opt, EEDI3CLData * d) noexcept {
         d->vectorSize = 4;
 
     if (d->vi.format->bytesPerSample == 1) {
-        d->processor = processCL_c<uint8_t>;
+        d->filter = filterCL_c<uint8_t>;
 
         if ((opt == 0 && iset >= 2) || opt == 2)
-            d->processor = processCL_sse2<uint8_t>;
+            d->filter = filterCL_sse2<uint8_t>;
     } else if (d->vi.format->bytesPerSample == 2) {
-        d->processor = processCL_c<uint16_t>;
+        d->filter = filterCL_c<uint16_t>;
 
         if ((opt == 0 && iset >= 2) || opt == 2)
-            d->processor = processCL_sse2<uint16_t>;
+            d->filter = filterCL_sse2<uint16_t>;
     } else {
-        d->processor = processCL_c<float>;
+        d->filter = filterCL_c<float>;
 
         if ((opt == 0 && iset >= 2) || opt == 2)
-            d->processor = processCL_sse2<float>;
+            d->filter = filterCL_sse2<float>;
     }
 }
 
@@ -184,51 +184,38 @@ static const VSFrameRef *VS_CC eedi3clGetFrame(int n, int activationReason, void
         try {
             auto threadId = std::this_thread::get_id();
 
-            if (!d->queue.count(threadId))
+            if (!d->queue.count(threadId)) {
                 d->queue.emplace(threadId, compute::command_queue{ d->ctx, d->gpu });
 
-            if (!d->calculateConnectionCosts.count(threadId)) {
                 if (d->vi.format->sampleType == stInteger)
                     d->calculateConnectionCosts.emplace(threadId, d->program.create_kernel("calculateConnectionCosts_uint"));
                 else
                     d->calculateConnectionCosts.emplace(threadId, d->program.create_kernel("calculateConnectionCosts_float"));
-            }
 
-            if (!d->src.count(threadId))
                 d->src.emplace(threadId, compute::image2d{ d->ctx, d->vi.width + 24U, d->vi.height + 8U, compute::image_format{ d->clImageFormat }, CL_MEM_READ_ONLY | CL_MEM_HOST_WRITE_ONLY });
 
-            if (!d->ccosts.count(threadId))
                 d->ccosts.emplace(threadId, compute::buffer{ d->ctx, d->vi.width * d->tpitchVector * sizeof(cl_float), CL_MEM_WRITE_ONLY | CL_MEM_ALLOC_HOST_PTR | CL_MEM_HOST_READ_ONLY });
 
-            if (!d->pcosts.count(threadId)) {
                 float * pcosts = vs_aligned_malloc<float>(d->vi.width * d->tpitchVector * sizeof(float), 16);
                 if (!pcosts)
                     throw std::string{ "malloc failure (pcosts)" };
                 d->pcosts.emplace(threadId, pcosts);
-            }
 
-            if (!d->pbackt.count(threadId)) {
                 int * pbackt = vs_aligned_malloc<int>(d->vi.width * d->tpitchVector * sizeof(int), 16);
                 if (!pbackt)
                     throw std::string{ "malloc failure (pbackt)" };
                 d->pbackt.emplace(threadId, pbackt);
-            }
 
-            if (!d->fpath.count(threadId)) {
                 int * fpath = new (std::nothrow) int[d->vi.width * d->vectorSize];
                 if (!fpath)
                     throw std::string{ "malloc failure (fpath)" };
                 d->fpath.emplace(threadId, fpath);
-            }
 
-            if (!d->dmap.count(threadId)) {
                 int * dmap = new (std::nothrow) int[d->vi.width * d->vi.height];
                 if (!dmap)
                     throw std::string{ "malloc failure (dmap)" };
                 d->dmap.emplace(threadId, dmap);
-            }
 
-            if (!d->tline.count(threadId)) {
                 if (d->vcheck) {
                     float * tline = new (std::nothrow) float[d->vi.width];
                     if (!tline)
@@ -286,7 +273,7 @@ static const VSFrameRef *VS_CC eedi3clGetFrame(int n, int activationReason, void
         }
 
         try {
-            d->processor(src, scp, dst, pad, field_n, d, vsapi);
+            d->filter(src, scp, dst, pad, field_n, d, vsapi);
         } catch (const compute::opencl_error & error) {
             vsapi->setFilterError(("EEDI3CL: " + error.error_string()).c_str(), frameCtx);
             vsapi->freeFrame(src);
@@ -347,7 +334,7 @@ static void VS_CC eedi3clFree(void *instanceData, VSCore *core, const VSAPI *vsa
 }
 
 void VS_CC eedi3clCreate(const VSMap *in, VSMap *out, void *userData, VSCore *core, const VSAPI *vsapi) {
-    std::unique_ptr<EEDI3CLData> d{ new EEDI3CLData{} };
+    std::unique_ptr<EEDI3CLData> d = std::make_unique<EEDI3CLData>();
     int err;
 
     d->node = vsapi->propGetNode(in, "clip", 0, nullptr);
@@ -431,7 +418,7 @@ void VS_CC eedi3clCreate(const VSMap *in, VSMap *out, void *userData, VSCore *co
             device = -1;
 
         if (d->field < 0 || d->field > 3)
-            throw std::string{ "field must be 0, 1, 2 or 3" };
+            throw std::string{ "field must be 0, 1, 2, or 3" };
 
         if (!d->dh && (d->vi.height & 1))
             throw std::string{ "height must be mod 2 when dh=False" };
@@ -458,13 +445,13 @@ void VS_CC eedi3clCreate(const VSMap *in, VSMap *out, void *userData, VSCore *co
             throw std::string{ "mdis must be between 1 and 40 (inclusive)" };
 
         if (d->vcheck < 0 || d->vcheck > 3)
-            throw std::string{ "vcheck must be 0, 1, 2 or 3" };
+            throw std::string{ "vcheck must be 0, 1, 2, or 3" };
 
         if (d->vcheck && (vthresh0 <= 0.f || vthresh1 <= 0.f || d->vthresh2 <= 0.f))
-            throw std::string{ "vthresh0, vthresh1 and vthresh2 must be greater than 0.0" };
+            throw std::string{ "vthresh0, vthresh1, and vthresh2 must be greater than 0.0" };
 
         if (opt < 0 || opt > 2)
-            throw std::string{ "opt must be 0, 1 or 2" };
+            throw std::string{ "opt must be 0, 1, or 2" };
 
         if (device >= static_cast<int>(compute::system::device_count()))
             throw std::string{ "device index out of range" };

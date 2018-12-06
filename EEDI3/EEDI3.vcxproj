@@ -34,6 +34,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <IncludePath>C:\Program Files %28x86%29\VapourSynth\sdk\include\vapoursynth;$(CUDA_PATH)\include;C:\boost_1_68_0;$(IncludePath)</IncludePath>
     <LibraryPath>$(CUDA_PATH)\lib\$(Platform);C:\boost_1_68_0\lib64-msvc-14.1;$(LibraryPath)</LibraryPath>
+    <TargetName>$(ProjectName)m</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>

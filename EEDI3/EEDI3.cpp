@@ -29,10 +29,10 @@
 #include "EEDI3.hpp"
 
 #ifdef VS_TARGET_CPU_X86
-template<typename T1, typename T2> extern void process_sse2(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3Data *, const VSAPI *) noexcept;
-template<typename T1, typename T2> extern void process_sse4(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3Data *, const VSAPI *) noexcept;
-template<typename T1, typename T2> extern void process_avx(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3Data *, const VSAPI *) noexcept;
-template<typename T1, typename T2> extern void process_avx512(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3Data *, const VSAPI *) noexcept;
+template<typename T1, typename T2> extern void filter_sse2(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3Data *, const VSAPI *) noexcept;
+template<typename T1, typename T2> extern void filter_sse4(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3Data *, const VSAPI *) noexcept;
+template<typename T1, typename T2> extern void filter_avx(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3Data *, const VSAPI *) noexcept;
+template<typename T1, typename T2> extern void filter_avx512(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3Data *, const VSAPI *) noexcept;
 #endif
 
 template<typename T>
@@ -130,7 +130,7 @@ inline void calculateConnectionCosts(const float * src3p, const float * src1p, c
                 s1 = (s1 > -FLT_MAX) ? s1 : (s2 > -FLT_MAX ? s2 : s0);
                 s2 = (s2 > -FLT_MAX) ? s2 : (s1 > -FLT_MAX ? s1 : s0);
 
-                const float ip = (src1p[x + u] + src1n[x - u]) * 0.5f; // should use cubic if ucubic=true
+                const float ip = (src1p[x + u] + src1n[x - u]) / 2.f; // should use cubic if ucubic=true
                 const float v = std::abs(src1p[x] - ip) + std::abs(src1n[x] - ip);
                 ccosts[d->tpitch * x + u] = d->alpha * (s0 + s1 + s2) + d->beta * std::abs(u) + d->remainingWeight * v;
             }
@@ -147,7 +147,7 @@ inline void calculateConnectionCosts(const float * src3p, const float * src1p, c
                          std::abs(src1p[x + u + k] - src1n[x - u + k]) +
                          std::abs(src1n[x + u + k] - src3n[x - u + k]);
 
-                const float ip = (src1p[x + u] + src1n[x - u]) * 0.5f; // should use cubic if ucubic=true
+                const float ip = (src1p[x + u] + src1n[x - u]) / 2.f; // should use cubic if ucubic=true
                 const float v = std::abs(src1p[x] - ip) + std::abs(src1n[x] - ip);
                 ccosts[d->tpitch * x + u] = d->alpha * s + d->beta * std::abs(u) + d->remainingWeight * v;
             }
@@ -156,7 +156,7 @@ inline void calculateConnectionCosts(const float * src3p, const float * src1p, c
 }
 
 template<typename T1, typename T2>
-static void process_c(const VSFrameRef * src, const VSFrameRef * scp, VSFrameRef * dst, VSFrameRef ** pad, const int field_n, const EEDI3Data * d, const VSAPI * vsapi) noexcept {
+static void filter_c(const VSFrameRef * src, const VSFrameRef * scp, VSFrameRef * dst, VSFrameRef ** pad, const int field_n, const EEDI3Data * d, const VSAPI * vsapi) noexcept {
     for (int plane = 0; plane < d->vi.format->numPlanes; plane++) {
         if (d->process[plane]) {
             copyPad<T1>(src, pad[plane], plane, 1 - field_n, d->dh, vsapi);
@@ -267,43 +267,43 @@ static void selectFunctions(const unsigned opt, EEDI3Data * d) noexcept {
 #endif
 
     if (d->vi.format->bytesPerSample == 1) {
-        d->processor = process_c<uint8_t, void>;
+        d->filter = filter_c<uint8_t, void>;
 
 #ifdef VS_TARGET_CPU_X86
         if ((opt == 0 && iset >= 9) || opt == 5)
-            d->processor = process_avx512<uint8_t, int>;
+            d->filter = filter_avx512<uint8_t, int>;
         else if ((opt == 0 && iset >= 7) || opt == 4)
-            d->processor = process_avx<uint8_t, float>;
+            d->filter = filter_avx<uint8_t, float>;
         else if ((opt == 0 && iset >= 5) || opt == 3)
-            d->processor = process_sse4<uint8_t, int>;
+            d->filter = filter_sse4<uint8_t, int>;
         else if ((opt == 0 && iset >= 2) || opt == 2)
-            d->processor = process_sse2<uint8_t, int>;
+            d->filter = filter_sse2<uint8_t, int>;
 #endif
     } else if (d->vi.format->bytesPerSample == 2) {
-        d->processor = process_c<uint16_t, void>;
+        d->filter = filter_c<uint16_t, void>;
 
 #ifdef VS_TARGET_CPU_X86
         if ((opt == 0 && iset >= 9) || opt == 5)
-            d->processor = process_avx512<uint16_t, int>;
+            d->filter = filter_avx512<uint16_t, int>;
         else if ((opt == 0 && iset >= 7) || opt == 4)
-            d->processor = process_avx<uint16_t, float>;
+            d->filter = filter_avx<uint16_t, float>;
         else if ((opt == 0 && iset >= 5) || opt == 3)
-            d->processor = process_sse4<uint16_t, int>;
+            d->filter = filter_sse4<uint16_t, int>;
         else if ((opt == 0 && iset >= 2) || opt == 2)
-            d->processor = process_sse2<uint16_t, int>;
+            d->filter = filter_sse2<uint16_t, int>;
 #endif
     } else {
-        d->processor = process_c<float, void>;
+        d->filter = filter_c<float, void>;
 
 #ifdef VS_TARGET_CPU_X86
         if ((opt == 0 && iset >= 9) || opt == 5)
-            d->processor = process_avx512<float, float>;
+            d->filter = filter_avx512<float, float>;
         else if ((opt == 0 && iset >= 7) || opt == 4)
-            d->processor = process_avx<float, float>;
+            d->filter = filter_avx<float, float>;
         else if ((opt == 0 && iset >= 5) || opt == 3)
-            d->processor = process_sse4<float, float>;
+            d->filter = filter_sse4<float, float>;
         else if ((opt == 0 && iset >= 2) || opt == 2)
-            d->processor = process_sse2<float, float>;
+            d->filter = filter_sse2<float, float>;
 #endif
     }
 }
@@ -338,44 +338,32 @@ static const VSFrameRef *VS_CC eedi3GetFrame(int n, int activationReason, void *
                 } else {
                     d->srcVector.emplace(threadId, nullptr);
                 }
-            }
 
-            if (!d->ccosts.count(threadId)) {
                 float * ccosts = vs_aligned_malloc<float>(d->vi.width * d->tpitchVector * sizeof(float), d->alignment);
                 if (!ccosts)
                     throw std::string{ "malloc failure (ccosts)" };
                 d->ccosts.emplace(threadId, ccosts);
-            }
 
-            if (!d->pcosts.count(threadId)) {
                 float * pcosts = vs_aligned_malloc<float>(d->vi.width * d->tpitchVector * sizeof(float), d->alignment);
                 if (!pcosts)
                     throw std::string{ "malloc failure (pcosts)" };
                 d->pcosts.emplace(threadId, pcosts);
-            }
 
-            if (!d->pbackt.count(threadId)) {
                 int * pbackt = vs_aligned_malloc<int>(d->vi.width * d->tpitchVector * sizeof(int), d->alignment);
                 if (!pbackt)
                     throw std::string{ "malloc failure (pbackt)" };
                 d->pbackt.emplace(threadId, pbackt);
-            }
 
-            if (!d->fpath.count(threadId)) {
                 int * fpath = new (std::nothrow) int[d->vi.width];
                 if (!fpath)
                     throw std::string{ "malloc failure (fpath)" };
                 d->fpath.emplace(threadId, fpath);
-            }
 
-            if (!d->dmap.count(threadId)) {
                 int * dmap = new (std::nothrow) int[d->vi.width * d->vi.height];
                 if (!dmap)
                     throw std::string{ "malloc failure (dmap)" };
                 d->dmap.emplace(threadId, dmap);
-            }
 
-            if (!d->tline.count(threadId)) {
                 if (d->vcheck) {
                     float * tline = new (std::nothrow) float[d->vi.width];
                     if (!tline)
@@ -429,7 +417,7 @@ static const VSFrameRef *VS_CC eedi3GetFrame(int n, int activationReason, void *
             field_n = field;
         }
 
-        d->processor(src, scp, dst, pad, field_n, d, vsapi);
+        d->filter(src, scp, dst, pad, field_n, d, vsapi);
 
         VSMap * props = vsapi->getFramePropsRW(dst);
         vsapi->propSetInt(props, "_FieldBased", 0, paReplace);
@@ -487,7 +475,7 @@ static void VS_CC eedi3Free(void *instanceData, VSCore *core, const VSAPI *vsapi
 }
 
 void VS_CC eedi3Create(const VSMap *in, VSMap *out, void *userData, VSCore *core, const VSAPI *vsapi) {
-    std::unique_ptr<EEDI3Data> d{ new EEDI3Data{} };
+    std::unique_ptr<EEDI3Data> d = std::make_unique<EEDI3Data>();
     int err;
 
     d->node = vsapi->propGetNode(in, "clip", 0, nullptr);
@@ -497,7 +485,7 @@ void VS_CC eedi3Create(const VSMap *in, VSMap *out, void *userData, VSCore *core
     try {
         if (!isConstantFormat(&d->vi) || (d->vi.format->sampleType == stInteger && d->vi.format->bitsPerSample > 16) ||
             (d->vi.format->sampleType == stFloat && d->vi.format->bitsPerSample != 32))
-            throw std::string{ "only constant format 8-16 bits integer and 32 bits float input supported" };
+            throw std::string{ "only constant format 8-16 bit integer and 32 bit float input supported" };
 
         d->field = int64ToIntS(vsapi->propGetInt(in, "field", 0, nullptr));
 
@@ -506,7 +494,7 @@ void VS_CC eedi3Create(const VSMap *in, VSMap *out, void *userData, VSCore *core
         const int m = vsapi->propNumElements(in, "planes");
 
         for (int i = 0; i < 3; i++)
-            d->process[i] = m <= 0;
+            d->process[i] = (m <= 0);
 
         for (int i = 0; i < m; i++) {
             const int n = int64ToIntS(vsapi->propGetInt(in, "planes", i, nullptr));
@@ -567,7 +555,7 @@ void VS_CC eedi3Create(const VSMap *in, VSMap *out, void *userData, VSCore *core
         const int opt = int64ToIntS(vsapi->propGetInt(in, "opt", 0, &err));
 
         if (d->field < 0 || d->field > 3)
-            throw std::string{ "field must be 0, 1, 2 or 3" };
+            throw std::string{ "field must be 0, 1, 2, or 3" };
 
         if (!d->dh && (d->vi.height & 1))
             throw std::string{ "height must be mod 2 when dh=False" };
@@ -594,13 +582,13 @@ void VS_CC eedi3Create(const VSMap *in, VSMap *out, void *userData, VSCore *core
             throw std::string{ "mdis must be between 1 and 40 (inclusive)" };
 
         if (d->vcheck < 0 || d->vcheck > 3)
-            throw std::string{ "vcheck must be 0, 1, 2 or 3" };
+            throw std::string{ "vcheck must be 0, 1, 2, or 3" };
 
         if (d->vcheck && (vthresh0 <= 0.f || vthresh1 <= 0.f || d->vthresh2 <= 0.f))
-            throw std::string{ "vthresh0, vthresh1 and vthresh2 must be greater than 0.0" };
+            throw std::string{ "vthresh0, vthresh1, and vthresh2 must be greater than 0.0" };
 
         if (opt < 0 || opt > 5)
-            throw std::string{ "opt must be 0, 1, 2, 3, 4 or 5" };
+            throw std::string{ "opt must be 0, 1, 2, 3, 4, or 5" };
 
         if (d->field > 1) {
             if (d->vi.numFrames > INT_MAX / 2)
@@ -676,7 +664,7 @@ extern void VS_CC eedi3clCreate(const VSMap *in, VSMap *out, void *userData, VSC
 #endif
 
 VS_EXTERNAL_API(void) VapourSynthPluginInit(VSConfigPlugin configFunc, VSRegisterFunction registerFunc, VSPlugin *plugin) {
-    configFunc("com.holywu.eedi3", "eedi3m", "An intra-field only deinterlacer", VAPOURSYNTH_API_VERSION, 1, plugin);
+    configFunc("com.holywu.eedi3", "eedi3m", "Enhanced Edge Directed Interpolation 3", VAPOURSYNTH_API_VERSION, 1, plugin);
 
     registerFunc("EEDI3",
                  "clip:clip;"
