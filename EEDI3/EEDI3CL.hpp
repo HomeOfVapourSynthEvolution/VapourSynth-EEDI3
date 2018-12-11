@@ -28,7 +28,7 @@ struct EEDI3CLData {
     std::unordered_map<std::thread::id, compute::kernel> calculateConnectionCosts;
     std::unordered_map<std::thread::id, compute::image2d> src;
     std::unordered_map<std::thread::id, compute::buffer> ccosts;
-    std::unordered_map<std::thread::id, float *> pcosts, tline;
-    std::unordered_map<std::thread::id, int *> pbackt, fpath, dmap;
-    void (*filter)(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3CLData *, const VSAPI *);
+    std::unordered_map<std::thread::id, float *> pcosts;
+    std::unordered_map<std::thread::id, int *> pbackt, fpath, dmap, tline;
+    void (*filter)(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3CLData * const VS_RESTRICT, const VSAPI *);
 };

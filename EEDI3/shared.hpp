@@ -52,36 +52,54 @@ static void copyPad(const VSFrameRef * src, VSFrameRef * dst, const int plane, c
 }
 
 template<typename T>
-static inline void interpolate(const T * src3p, const T * src1p, const T * src1n, const T * src3n, const int * fpath, int * VS_RESTRICT dmap, T * VS_RESTRICT dstp,
-                               const int width, const bool ucubic, const int peak) noexcept {
+static inline void interpolate(const T * src3p, const T * src1p, const T * src1n, const T * src3n, const bool * bmask, const int * fpath,
+                               int * VS_RESTRICT dmap, T * VS_RESTRICT dstp, const int width, const bool ucubic, const int peak) noexcept {
     for (int x = 0; x < width; x++) {
-        const int dir = fpath[x];
-        const int dir3 = dir * 3;
-        const int absDir3 = std::abs(dir3);
+        if (bmask && !bmask[x]) {
+            dmap[x] = 0;
 
-        dmap[x] = dir;
+            if (ucubic)
+                dstp[x] = std::min(std::max((9 * (src1p[x] + src1n[x]) - (src3p[x] + src3n[x]) + 8) >> 4, 0), peak);
+            else
+                dstp[x] = (src1p[x] + src1n[x] + 1) >> 1;
+        } else {
+            const int dir = fpath[x];
+            const int dir3 = dir * 3;
+            const int absDir3 = std::abs(dir3);
 
-        if (ucubic && x >= absDir3 && x <= width - 1 - absDir3)
-            dstp[x] = std::min(std::max((36 * (src1p[x + dir] + src1n[x - dir]) - 4 * (src3p[x + dir3] + src3n[x - dir3]) + 32) >> 6, 0), peak);
-        else
-            dstp[x] = (src1p[x + dir] + src1n[x - dir] + 1) >> 1;
+            dmap[x] = dir;
+
+            if (ucubic && x >= absDir3 && x <= width - 1 - absDir3)
+                dstp[x] = std::min(std::max((9 * (src1p[x + dir] + src1n[x - dir]) - (src3p[x + dir3] + src3n[x - dir3]) + 8) >> 4, 0), peak);
+            else
+                dstp[x] = (src1p[x + dir] + src1n[x - dir] + 1) >> 1;
+        }
     }
 }
 
 template<>
-inline void interpolate(const float * src3p, const float * src1p, const float * src1n, const float * src3n, const int * fpath, int * VS_RESTRICT dmap, float * VS_RESTRICT dstp,
-                        const int width, const bool ucubic, const int peak) noexcept {
+inline void interpolate(const float * src3p, const float * src1p, const float * src1n, const float * src3n, const bool * bmask, const int * fpath,
+                        int * VS_RESTRICT dmap, float * VS_RESTRICT dstp, const int width, const bool ucubic, const int peak) noexcept {
     for (int x = 0; x < width; x++) {
-        const int dir = fpath[x];
-        const int dir3 = dir * 3;
-        const int absDir3 = std::abs(dir3);
+        if (bmask && !bmask[x]) {
+            dmap[x] = 0;
 
-        dmap[x] = dir;
+            if (ucubic)
+                dstp[x] = 0.5625f * (src1p[x] + src1n[x]) - 0.0625f * (src3p[x] + src3n[x]);
+            else
+                dstp[x] = (src1p[x] + src1n[x]) / 2.f;
+        } else {
+            const int dir = fpath[x];
+            const int dir3 = dir * 3;
+            const int absDir3 = std::abs(dir3);
 
-        if (ucubic && x >= absDir3 && x <= width - 1 - absDir3)
-            dstp[x] = 0.5625f * (src1p[x + dir] + src1n[x - dir]) - 0.0625f * (src3p[x + dir3] + src3n[x - dir3]);
-        else
-            dstp[x] = (src1p[x + dir] + src1n[x - dir]) / 2.f;
+            dmap[x] = dir;
+
+            if (ucubic && x >= absDir3 && x <= width - 1 - absDir3)
+                dstp[x] = 0.5625f * (src1p[x + dir] + src1n[x - dir]) - 0.0625f * (src3p[x + dir3] + src3n[x - dir3]);
+            else
+                dstp[x] = (src1p[x + dir] + src1n[x - dir]) / 2.f;
+        }
     }
 }
 
@@ -101,7 +119,7 @@ static void vCheck(const T * srcp, const T * scpp, T * VS_RESTRICT dstp, const i
 
             for (int x = 0; x < dstWidth; x++) {
                 const int dirc = dmap[x];
-                const T cint = scpp ? scpp[x] : std::min(std::max((36 * (dst1p[x] + dst1n[x]) - 4 * (dst3p[x] + dst3n[x]) + 32) >> 6, 0), peak);
+                const T cint = scpp ? scpp[x] : std::min(std::max((9 * (dst1p[x] + dst1n[x]) - (dst3p[x] + dst3n[x]) + 8) >> 4, 0), peak);
 
                 if (dirc == 0) {
                     tline[x] = cint;

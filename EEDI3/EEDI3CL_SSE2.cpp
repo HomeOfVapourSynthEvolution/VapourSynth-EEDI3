@@ -2,7 +2,8 @@
 #include "EEDI3CL.hpp"
 
 template<typename T>
-void filterCL_sse2(const VSFrameRef * src, const VSFrameRef * scp, VSFrameRef * dst, VSFrameRef ** pad, const int field_n, const EEDI3CLData * d, const VSAPI * vsapi) {
+void filterCL_sse2(const VSFrameRef * src, const VSFrameRef * scp, VSFrameRef * dst, VSFrameRef ** pad,
+                   const int field_n, const EEDI3CLData * const VS_RESTRICT d, const VSAPI * vsapi) {
     for (int plane = 0; plane < d->vi.format->numPlanes; plane++) {
         if (d->process[plane]) {
             copyPad<T>(src, pad[plane], plane, 1 - field_n, d->dh, vsapi);
@@ -25,7 +26,7 @@ void filterCL_sse2(const VSFrameRef * src, const VSFrameRef * scp, VSFrameRef * 
             int * _pbackt = d->pbackt.at(threadId) + d->mdisVector;
             int * fpath = d->fpath.at(threadId);
             int * _dmap = d->dmap.at(threadId);
-            float * tline = d->tline.at(threadId);
+            int * tline = d->tline.at(threadId);
 
             const size_t globalWorkSize[] = { static_cast<size_t>((dstWidth + 15) & -16), static_cast<size_t>(d->vectorSize) };
             constexpr size_t localWorkSize[] = { 16, 4 };
@@ -55,7 +56,6 @@ void filterCL_sse2(const VSFrameRef * src, const VSFrameRef * scp, VSFrameRef * 
 
                     const int umax = std::min({ x, dstWidth - 1 - x, d->mdis });
                     const int umax2 = std::min({ x - 1, dstWidth - x, d->mdis });
-
                     for (int u = -umax; u <= umax; u++) {
                         Vec4i idx = zero_128b();
                         Vec4f bval = FLT_MAX;
@@ -94,7 +94,7 @@ void filterCL_sse2(const VSFrameRef * src, const VSFrameRef * scp, VSFrameRef * 
                     for (int x = dstWidth - 2; x >= 0; x--)
                         fpath[x] = pbackt[(d->tpitch * x + fpath[x + 1]) * d->vectorSize];
 
-                    interpolate<T>(src3p, src1p, src1n, src3n, fpath, dmap, dstp, dstWidth, d->ucubic, d->peak);
+                    interpolate<T>(src3p, src1p, src1n, src3n, nullptr, fpath, dmap, dstp, dstWidth, d->ucubic, d->peak);
                 }
 
                 queue.enqueue_unmap_buffer(_ccosts, ccosts - d->mdisVector);
@@ -105,7 +105,7 @@ void filterCL_sse2(const VSFrameRef * src, const VSFrameRef * scp, VSFrameRef * 
                 const T * scpp = nullptr;
                 if (d->sclip)
                     scpp = reinterpret_cast<const T *>(vsapi->getReadPtr(scp, plane)) + dstStride * field_n;
-                T * dstp = _dstp + dstStride * field_n;;
+                T * dstp = _dstp + dstStride * field_n;
 
                 vCheck<T>(srcp, scpp, dstp, _dmap, tline, field_n, dstWidth, srcHeight, srcStride, dstStride, d->vcheck, d->vthresh2, d->rcpVthresh0, d->rcpVthresh1, d->rcpVthresh2, d->peak);
             }
@@ -113,7 +113,7 @@ void filterCL_sse2(const VSFrameRef * src, const VSFrameRef * scp, VSFrameRef * 
     }
 }
 
-template void filterCL_sse2<uint8_t>(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3CLData *, const VSAPI *);
-template void filterCL_sse2<uint16_t>(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3CLData *, const VSAPI *);
-template void filterCL_sse2<float>(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3CLData *, const VSAPI *);
+template void filterCL_sse2<uint8_t>(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3CLData * const VS_RESTRICT, const VSAPI *);
+template void filterCL_sse2<uint16_t>(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3CLData * const VS_RESTRICT, const VSAPI *);
+template void filterCL_sse2<float>(const VSFrameRef *, const VSFrameRef *, VSFrameRef *, VSFrameRef **, const int, const EEDI3CLData * const VS_RESTRICT, const VSAPI *);
 #endif
