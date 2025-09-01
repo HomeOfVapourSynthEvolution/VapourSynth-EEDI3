@@ -1,4 +1,5 @@
 #ifdef EEDI3_X86
+#define INSTRSET 5
 #include "EEDI3.h"
 
 template<typename vector_t>
@@ -148,7 +149,7 @@ inline void calculateConnectionCosts(const float* srcp, const bool* bmask, float
 }
 
 template<typename pixel_t, typename vector_t>
-void filter_sse2(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, VSFrame* mcp, VSFrame** pad, VSFrame* dst, void* _srcVector, uint8_t* _mskVector,
+void filter_sse4(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, VSFrame* mcp, VSFrame** pad, VSFrame* dst, void* _srcVector, uint8_t* _mskVector,
                  bool* VS_RESTRICT bmask, float* ccosts, float* pcosts, int* _pbackt, int* VS_RESTRICT fpath, int* _dmap, const int field_n,
                  const EEDI3Data* VS_RESTRICT d, const VSAPI* vsapi) noexcept {
     for (int plane = 0; plane < d->vi.format.numPlanes; plane++) {
@@ -300,15 +301,15 @@ void filter_sse2(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, V
     }
 }
 
-template void filter_sse2<uint8_t, int>(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, VSFrame* mcp, VSFrame** pad, VSFrame* dst,
+template void filter_sse4<uint8_t, int>(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, VSFrame* mcp, VSFrame** pad, VSFrame* dst,
                                         void* _srcVector, uint8_t* _mskVector, bool* VS_RESTRICT bmask, float* ccosts, float* pcosts, int* _pbackt,
                                         int* VS_RESTRICT fpath, int* _dmap, const int field_n, const EEDI3Data* VS_RESTRICT d, const VSAPI* vsapi) noexcept;
 
-template void filter_sse2<uint16_t, int>(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, VSFrame* mcp, VSFrame** pad, VSFrame* dst,
+template void filter_sse4<uint16_t, int>(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, VSFrame* mcp, VSFrame** pad, VSFrame* dst,
                                          void* _srcVector, uint8_t* _mskVector, bool* VS_RESTRICT bmask, float* ccosts, float* pcosts, int* _pbackt,
                                          int* VS_RESTRICT fpath, int* _dmap, const int field_n, const EEDI3Data* VS_RESTRICT d, const VSAPI* vsapi) noexcept;
 
-template void filter_sse2<float, float>(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, VSFrame* mcp, VSFrame** pad, VSFrame* dst,
+template void filter_sse4<float, float>(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, VSFrame* mcp, VSFrame** pad, VSFrame* dst,
                                         void* _srcVector, uint8_t* _mskVector, bool* VS_RESTRICT bmask, float* ccosts, float* pcosts, int* _pbackt,
                                         int* VS_RESTRICT fpath, int* _dmap, const int field_n, const EEDI3Data* VS_RESTRICT d, const VSAPI* vsapi) noexcept;
 #endif

@@ -32,7 +32,7 @@ using namespace std::literals;
 
 #ifdef EEDI3_X86
 template<typename pixel_t, typename vector_t>
-extern void filter_sse2(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, VSFrame* mcp, VSFrame** pad, VSFrame* dst, void* srcVector,
+extern void filter_sse4(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, VSFrame* mcp, VSFrame** pad, VSFrame* dst, void* srcVector,
                         uint8_t* mskVector, bool* VS_RESTRICT bmask, float* ccosts, float* pcosts, int* pbackt, int* VS_RESTRICT fpath, int* dmap,
                         const int field_n, const EEDI3Data* VS_RESTRICT d, const VSAPI* vsapi) noexcept;
 
@@ -685,7 +685,7 @@ static void VS_CC eedi3Create(const VSMap* in, VSMap* out, [[maybe_unused]] void
             } else if ((opt == 0 && iset >= 8) || opt == 3) {
                 d->vectorSize = 8;
                 d->alignment = 32;
-            } else if ((opt == 0 && iset >= 2) || opt >= 2) {
+            } else if ((opt == 0 && iset >= 5) || opt == 2) {
                 d->vectorSize = 4;
                 d->alignment = 16;
             }
@@ -699,8 +699,8 @@ static void VS_CC eedi3Create(const VSMap* in, VSMap* out, [[maybe_unused]] void
                     d->filter = filter_avx512<uint8_t, int>;
                 else if ((opt == 0 && iset >= 8) || opt == 3)
                     d->filter = filter_avx2<uint8_t, int>;
-                else if ((opt == 0 && iset >= 2) || opt == 2)
-                    d->filter = filter_sse2<uint8_t, int>;
+                else if ((opt == 0 && iset >= 5) || opt == 2)
+                    d->filter = filter_sse4<uint8_t, int>;
 #endif
             } else if (d->vi.format.bytesPerSample == 2) {
                 d->filter = filter_c<uint16_t>;
@@ -710,8 +710,8 @@ static void VS_CC eedi3Create(const VSMap* in, VSMap* out, [[maybe_unused]] void
                     d->filter = filter_avx512<uint16_t, int>;
                 else if ((opt == 0 && iset >= 8) || opt == 3)
                     d->filter = filter_avx2<uint16_t, int>;
-                else if ((opt == 0 && iset >= 2) || opt == 2)
-                    d->filter = filter_sse2<uint16_t, int>;
+                else if ((opt == 0 && iset >= 5) || opt == 2)
+                    d->filter = filter_sse4<uint16_t, int>;
 #endif
             } else {
                 d->filter = filter_c<float>;
@@ -721,8 +721,8 @@ static void VS_CC eedi3Create(const VSMap* in, VSMap* out, [[maybe_unused]] void
                     d->filter = filter_avx512<float, float>;
                 else if ((opt == 0 && iset >= 8) || opt == 3)
                     d->filter = filter_avx2<float, float>;
-                else if ((opt == 0 && iset >= 2) || opt == 2)
-                    d->filter = filter_sse2<float, float>;
+                else if ((opt == 0 && iset >= 5) || opt == 2)
+                    d->filter = filter_sse4<float, float>;
 #endif
             }
         }

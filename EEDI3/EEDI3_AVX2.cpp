@@ -1,4 +1,5 @@
 #ifdef EEDI3_X86
+#define INSTRSET 8
 #include "EEDI3.h"
 
 template<typename vector_t>

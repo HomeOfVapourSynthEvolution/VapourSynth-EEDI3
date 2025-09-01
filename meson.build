@@ -28,12 +28,12 @@ libs = []
 if host_machine.cpu_family().startswith('x86')
   add_project_arguments('-DEEDI3_X86', language: 'cpp')
 
-  libs += static_library('sse2',
+  libs += static_library('sse4',
     files(
-      'EEDI3/EEDI3_SSE2.cpp',
+      'EEDI3/EEDI3_SSE4.cpp',
       'EEDI3/vectorclass/instrset_detect.cpp',
     ),
-    cpp_args: gcc_syntax ? ['-msse2'] : '/arch:SSE2',
+    cpp_args: gcc_syntax ? ['-msse4.1'] : '/arch:SSE2',
     dependencies: vapoursynth_dep,
     gnu_symbol_visibility: 'hidden',
   )

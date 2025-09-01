@@ -1,16 +1,5 @@
 #ifdef EEDI3_X86
-#ifndef __AVX512VL__
-#define __AVX512VL__
-#endif
-
-#ifndef __AVX512BW__
-#define __AVX512BW__
-#endif
-
-#ifndef __AVX512DQ__
-#define __AVX512DQ__
-#endif
-
+#define INSTRSET 10
 #include "EEDI3.h"
 
 template<typename vector_t>
