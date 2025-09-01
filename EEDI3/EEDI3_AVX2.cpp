@@ -4,7 +4,7 @@
 template<typename vector_t>
 static inline void calculateConnectionCosts(const vector_t* srcp, const bool* bmask, float* ccosts, const int width, const int stride,
                                             const EEDI3Data* VS_RESTRICT d) noexcept {
-    auto src3p = reinterpret_cast<const __m128i*>(srcp) + MARGIN_H;
+    auto src3p = reinterpret_cast<const __m256i*>(srcp) + MARGIN_H;
     auto src1p = src3p + stride;
     auto src1n = src1p + stride;
     auto src3n = src1n + stride;
@@ -17,36 +17,36 @@ static inline void calculateConnectionCosts(const vector_t* srcp, const bool* bm
                     const int u2 = u * 2;
                     const bool s1Flag = (u >= 0 && x >= u2) || (u <= 0 && x < width + u2);
                     const bool s2Flag = (u <= 0 && x >= -u2) || (u >= 0 && x < width + u2);
-                    Vec4i s0 = zero_si128(), s1 = zero_si128(), s2 = zero_si128();
+                    Vec8i s0 = zero_si256(), s1 = zero_si256(), s2 = zero_si256();
 
                     for (int k = -(d->nrad); k <= d->nrad; k++) {
-                        s0 += abs(Vec4i().load_a(src3p + x + u + k) - Vec4i().load_a(src1p + x - u + k)) +
-                            abs(Vec4i().load_a(src1p + x + u + k) - Vec4i().load_a(src1n + x - u + k)) +
-                            abs(Vec4i().load_a(src1n + x + u + k) - Vec4i().load_a(src3n + x - u + k));
+                        s0 += abs(Vec8i().load_a(src3p + x + u + k) - Vec8i().load_a(src1p + x - u + k)) +
+                            abs(Vec8i().load_a(src1p + x + u + k) - Vec8i().load_a(src1n + x - u + k)) +
+                            abs(Vec8i().load_a(src1n + x + u + k) - Vec8i().load_a(src3n + x - u + k));
                     }
 
                     if (s1Flag) {
                         for (int k = -(d->nrad); k <= d->nrad; k++) {
-                            s1 += abs(Vec4i().load_a(src3p + x + k) - Vec4i().load_a(src1p + x - u2 + k)) +
-                                abs(Vec4i().load_a(src1p + x + k) - Vec4i().load_a(src1n + x - u2 + k)) +
-                                abs(Vec4i().load_a(src1n + x + k) - Vec4i().load_a(src3n + x - u2 + k));
+                            s1 += abs(Vec8i().load_a(src3p + x + k) - Vec8i().load_a(src1p + x - u2 + k)) +
+                                abs(Vec8i().load_a(src1p + x + k) - Vec8i().load_a(src1n + x - u2 + k)) +
+                                abs(Vec8i().load_a(src1n + x + k) - Vec8i().load_a(src3n + x - u2 + k));
                         }
                     }
 
                     if (s2Flag) {
                         for (int k = -(d->nrad); k <= d->nrad; k++) {
-                            s2 += abs(Vec4i().load_a(src3p + x + u2 + k) - Vec4i().load_a(src1p + x + k)) +
-                                abs(Vec4i().load_a(src1p + x + u2 + k) - Vec4i().load_a(src1n + x + k)) +
-                                abs(Vec4i().load_a(src1n + x + u2 + k) - Vec4i().load_a(src3n + x + k));
+                            s2 += abs(Vec8i().load_a(src3p + x + u2 + k) - Vec8i().load_a(src1p + x + k)) +
+                                abs(Vec8i().load_a(src1p + x + u2 + k) - Vec8i().load_a(src1n + x + k)) +
+                                abs(Vec8i().load_a(src1n + x + u2 + k) - Vec8i().load_a(src3n + x + k));
                         }
                     }
 
                     s1 = s1Flag ? s1 : (s2Flag ? s2 : s0);
                     s2 = s2Flag ? s2 : (s1Flag ? s1 : s0);
 
-                    const Vec4i ip = (Vec4i().load_a(src1p + x + u) + Vec4i().load_a(src1n + x - u) + 1) >> 1; // should use cubic if ucubic=true
-                    const Vec4i v = abs(Vec4i().load_a(src1p + x) - ip) + abs(Vec4i().load_a(src1n + x) - ip);
-                    const Vec4f result = mul_add(d->alpha, to_float(s0 + s1 + s2), mul_add(d->beta, std::abs(u), d->remainingWeight * to_float(v)));
+                    const Vec8i ip = (Vec8i().load_a(src1p + x + u) + Vec8i().load_a(src1n + x - u) + 1) >> 1; // should use cubic if ucubic=true
+                    const Vec8i v = abs(Vec8i().load_a(src1p + x) - ip) + abs(Vec8i().load_a(src1n + x) - ip);
+                    const Vec8f result = mul_add(d->alpha, to_float(s0 + s1 + s2), mul_add(d->beta, std::abs(u), d->remainingWeight * to_float(v)));
                     result.store_nt(ccosts + (d->tpitch * x + d->mdis + u) * d->vectorSize);
                 }
             }
@@ -56,17 +56,17 @@ static inline void calculateConnectionCosts(const vector_t* srcp, const bool* bm
             if (!bmask || bmask[x]) {
                 const int umax = std::min({ x, width - 1 - x, d->mdis });
                 for (int u = -umax; u <= umax; u++) {
-                    Vec4i s = zero_si128();
+                    Vec8i s = zero_si256();
 
                     for (int k = -(d->nrad); k <= d->nrad; k++) {
-                        s += abs(Vec4i().load_a(src3p + x + u + k) - Vec4i().load_a(src1p + x - u + k)) +
-                            abs(Vec4i().load_a(src1p + x + u + k) - Vec4i().load_a(src1n + x - u + k)) +
-                            abs(Vec4i().load_a(src1n + x + u + k) - Vec4i().load_a(src3n + x - u + k));
+                        s += abs(Vec8i().load_a(src3p + x + u + k) - Vec8i().load_a(src1p + x - u + k)) +
+                            abs(Vec8i().load_a(src1p + x + u + k) - Vec8i().load_a(src1n + x - u + k)) +
+                            abs(Vec8i().load_a(src1n + x + u + k) - Vec8i().load_a(src3n + x - u + k));
                     }
 
-                    const Vec4i ip = (Vec4i().load_a(src1p + x + u) + Vec4i().load_a(src1n + x - u) + 1) >> 1; // should use cubic if ucubic=true
-                    const Vec4i v = abs(Vec4i().load_a(src1p + x) - ip) + abs(Vec4i().load_a(src1n + x) - ip);
-                    const Vec4f result = mul_add(d->alpha, to_float(s), mul_add(d->beta, std::abs(u), d->remainingWeight * to_float(v)));
+                    const Vec8i ip = (Vec8i().load_a(src1p + x + u) + Vec8i().load_a(src1n + x - u) + 1) >> 1; // should use cubic if ucubic=true
+                    const Vec8i v = abs(Vec8i().load_a(src1p + x) - ip) + abs(Vec8i().load_a(src1n + x) - ip);
+                    const Vec8f result = mul_add(d->alpha, to_float(s), mul_add(d->beta, std::abs(u), d->remainingWeight * to_float(v)));
                     result.store_nt(ccosts + (d->tpitch * x + d->mdis + u) * d->vectorSize);
                 }
             }
@@ -77,7 +77,7 @@ static inline void calculateConnectionCosts(const vector_t* srcp, const bool* bm
 template<>
 inline void calculateConnectionCosts(const float* srcp, const bool* bmask, float* ccosts, const int width, const int stride,
                                      const EEDI3Data* VS_RESTRICT d) noexcept {
-    auto src3p = reinterpret_cast<const __m128*>(srcp) + MARGIN_H;
+    auto src3p = reinterpret_cast<const __m256*>(srcp) + MARGIN_H;
     auto src1p = src3p + stride;
     auto src1n = src1p + stride;
     auto src3n = src1n + stride;
@@ -90,36 +90,36 @@ inline void calculateConnectionCosts(const float* srcp, const bool* bmask, float
                     const int u2 = u * 2;
                     const bool s1Flag = (u >= 0 && x >= u2) || (u <= 0 && x < width + u2);
                     const bool s2Flag = (u <= 0 && x >= -u2) || (u >= 0 && x < width + u2);
-                    Vec4f s0 = zero_4f(), s1 = zero_4f(), s2 = zero_4f();
+                    Vec8f s0 = zero_8f(), s1 = zero_8f(), s2 = zero_8f();
 
                     for (int k = -(d->nrad); k <= d->nrad; k++) {
-                        s0 += abs(Vec4f().load_a(src3p + x + u + k) - Vec4f().load_a(src1p + x - u + k)) +
-                            abs(Vec4f().load_a(src1p + x + u + k) - Vec4f().load_a(src1n + x - u + k)) +
-                            abs(Vec4f().load_a(src1n + x + u + k) - Vec4f().load_a(src3n + x - u + k));
+                        s0 += abs(Vec8f().load_a(src3p + x + u + k) - Vec8f().load_a(src1p + x - u + k)) +
+                            abs(Vec8f().load_a(src1p + x + u + k) - Vec8f().load_a(src1n + x - u + k)) +
+                            abs(Vec8f().load_a(src1n + x + u + k) - Vec8f().load_a(src3n + x - u + k));
                     }
 
                     if (s1Flag) {
                         for (int k = -(d->nrad); k <= d->nrad; k++) {
-                            s1 += abs(Vec4f().load_a(src3p + x + k) - Vec4f().load_a(src1p + x - u2 + k)) +
-                                abs(Vec4f().load_a(src1p + x + k) - Vec4f().load_a(src1n + x - u2 + k)) +
-                                abs(Vec4f().load_a(src1n + x + k) - Vec4f().load_a(src3n + x - u2 + k));
+                            s1 += abs(Vec8f().load_a(src3p + x + k) - Vec8f().load_a(src1p + x - u2 + k)) +
+                                abs(Vec8f().load_a(src1p + x + k) - Vec8f().load_a(src1n + x - u2 + k)) +
+                                abs(Vec8f().load_a(src1n + x + k) - Vec8f().load_a(src3n + x - u2 + k));
                         }
                     }
 
                     if (s2Flag) {
                         for (int k = -(d->nrad); k <= d->nrad; k++) {
-                            s2 += abs(Vec4f().load_a(src3p + x + u2 + k) - Vec4f().load_a(src1p + x + k)) +
-                                abs(Vec4f().load_a(src1p + x + u2 + k) - Vec4f().load_a(src1n + x + k)) +
-                                abs(Vec4f().load_a(src1n + x + u2 + k) - Vec4f().load_a(src3n + x + k));
+                            s2 += abs(Vec8f().load_a(src3p + x + u2 + k) - Vec8f().load_a(src1p + x + k)) +
+                                abs(Vec8f().load_a(src1p + x + u2 + k) - Vec8f().load_a(src1n + x + k)) +
+                                abs(Vec8f().load_a(src1n + x + u2 + k) - Vec8f().load_a(src3n + x + k));
                         }
                     }
 
                     s1 = s1Flag ? s1 : (s2Flag ? s2 : s0);
                     s2 = s2Flag ? s2 : (s1Flag ? s1 : s0);
 
-                    const Vec4f ip = (Vec4f().load_a(src1p + x + u) + Vec4f().load_a(src1n + x - u)) * 0.5f; // should use cubic if ucubic=true
-                    const Vec4f v = abs(Vec4f().load_a(src1p + x) - ip) + abs(Vec4f().load_a(src1n + x) - ip);
-                    const Vec4f result = mul_add(d->alpha, s0 + s1 + s2, mul_add(d->beta, std::abs(u), d->remainingWeight * v));
+                    const Vec8f ip = (Vec8f().load_a(src1p + x + u) + Vec8f().load_a(src1n + x - u)) * 0.5f; // should use cubic if ucubic=true
+                    const Vec8f v = abs(Vec8f().load_a(src1p + x) - ip) + abs(Vec8f().load_a(src1n + x) - ip);
+                    const Vec8f result = mul_add(d->alpha, s0 + s1 + s2, mul_add(d->beta, std::abs(u), d->remainingWeight * v));
                     result.store_nt(ccosts + (d->tpitch * x + d->mdis + u) * d->vectorSize);
                 }
             }
@@ -129,17 +129,17 @@ inline void calculateConnectionCosts(const float* srcp, const bool* bmask, float
             if (!bmask || bmask[x]) {
                 const int umax = std::min({ x, width - 1 - x, d->mdis });
                 for (int u = -umax; u <= umax; u++) {
-                    Vec4f s = zero_4f();
+                    Vec8f s = zero_8f();
 
                     for (int k = -(d->nrad); k <= d->nrad; k++) {
-                        s += abs(Vec4f().load_a(src3p + x + u + k) - Vec4f().load_a(src1p + x - u + k)) +
-                            abs(Vec4f().load_a(src1p + x + u + k) - Vec4f().load_a(src1n + x - u + k)) +
-                            abs(Vec4f().load_a(src1n + x + u + k) - Vec4f().load_a(src3n + x - u + k));
+                        s += abs(Vec8f().load_a(src3p + x + u + k) - Vec8f().load_a(src1p + x - u + k)) +
+                            abs(Vec8f().load_a(src1p + x + u + k) - Vec8f().load_a(src1n + x - u + k)) +
+                            abs(Vec8f().load_a(src1n + x + u + k) - Vec8f().load_a(src3n + x - u + k));
                     }
 
-                    const Vec4f ip = (Vec4f().load_a(src1p + x + u) + Vec4f().load_a(src1n + x - u)) * 0.5f; // should use cubic if ucubic=true
-                    const Vec4f v = abs(Vec4f().load_a(src1p + x) - ip) + abs(Vec4f().load_a(src1n + x) - ip);
-                    const Vec4f result = mul_add(d->alpha, s, mul_add(d->beta, std::abs(u), d->remainingWeight * v));
+                    const Vec8f ip = (Vec8f().load_a(src1p + x + u) + Vec8f().load_a(src1n + x - u)) * 0.5f; // should use cubic if ucubic=true
+                    const Vec8f v = abs(Vec8f().load_a(src1p + x) - ip) + abs(Vec8f().load_a(src1n + x) - ip);
+                    const Vec8f result = mul_add(d->alpha, s, mul_add(d->beta, std::abs(u), d->remainingWeight * v));
                     result.store_nt(ccosts + (d->tpitch * x + d->mdis + u) * d->vectorSize);
                 }
             }
@@ -148,7 +148,7 @@ inline void calculateConnectionCosts(const float* srcp, const bool* bmask, float
 }
 
 template<typename pixel_t, typename vector_t>
-void filter_sse2(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, VSFrame* mcp, VSFrame** pad, VSFrame* dst, void* _srcVector, uint8_t* _mskVector,
+void filter_avx2(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, VSFrame* mcp, VSFrame** pad, VSFrame* dst, void* _srcVector, uint8_t* _mskVector,
                  bool* VS_RESTRICT bmask, float* ccosts, float* pcosts, int* _pbackt, int* VS_RESTRICT fpath, int* _dmap, const int field_n,
                  const EEDI3Data* VS_RESTRICT d, const VSAPI* vsapi) noexcept {
     for (int plane = 0; plane < d->vi.format.numPlanes; plane++) {
@@ -191,7 +191,7 @@ void filter_sse2(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, V
                 if (bmask) {
                     prepareMask(maskp, _mskVector, dstWidth, (dstHeight + field_n) / 2, vsapi->getStride(mcp, plane), off, d->vectorSize);
 
-                    auto mskVector = reinterpret_cast<const int32_t*>(_mskVector);
+                    auto mskVector = reinterpret_cast<const int64_t*>(_mskVector);
                     const int minmdis = std::min(dstWidth, d->mdis);
                     int last = -666999;
 
@@ -216,7 +216,7 @@ void filter_sse2(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, V
                 calculateConnectionCosts<vector_t>(srcVector, bmask, ccosts, dstWidth, srcWidth, d);
 
                 // calculate path costs
-                Vec4f().load_a(ccosts + d->mdisVector).store_a(pcosts + d->mdisVector);
+                Vec8f().load_a(ccosts + d->mdisVector).store_a(pcosts + d->mdisVector);
                 for (int x = 1; x < dstWidth; x++) {
                     auto tT = ccosts + d->tpitchVector * x;
                     auto ppT = pcosts + d->tpitchVector * (x - 1);
@@ -236,26 +236,26 @@ void filter_sse2(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, V
 
                             const int pumax = std::min(x - 1, dstWidth - x);
                             if (pumax < d->mdis) {
-                                Vec4i(1 - pumax).store_nt(piT + (d->mdis - pumax) * d->vectorSize);
-                                Vec4i(pumax - 1).store_nt(piT + (d->mdis + pumax) * d->vectorSize);
+                                Vec8i(1 - pumax).store_nt(piT + (d->mdis - pumax) * d->vectorSize);
+                                Vec8i(pumax - 1).store_nt(piT + (d->mdis + pumax) * d->vectorSize);
                             }
                         }
                     } else {
                         const int umax = std::min({ x, dstWidth - 1 - x, d->mdis });
                         const int umax2 = std::min({ x - 1, dstWidth - x, d->mdis });
                         for (int u = -umax; u <= umax; u++) {
-                            Vec4i idx = zero_si128();
-                            Vec4f bval = FLT_MAX;
+                            Vec8i idx = zero_si256();
+                            Vec8f bval = FLT_MAX;
 
                             for (int v = std::max(-umax2, u - 1); v <= std::min(umax2, u + 1); v++) {
-                                const Vec4f z = mul_add(d->gamma, std::abs(u - v), Vec4f().load_a(ppT + (d->mdis + v) * d->vectorSize));
-                                const Vec4f ccost = min(z, FLT_MAX * 0.9f);
-                                idx = select(Vec4ib(ccost < bval), v, idx);
+                                const Vec8f z = mul_add(d->gamma, std::abs(u - v), Vec8f().load_a(ppT + (d->mdis + v) * d->vectorSize));
+                                const Vec8f ccost = min(z, FLT_MAX * 0.9f);
+                                idx = select(Vec8ib(ccost < bval), v, idx);
                                 bval = min(ccost, bval);
                             }
 
                             const int mu = (d->mdis + u) * d->vectorSize;
-                            const Vec4f z = bval + Vec4f().load_a(tT + mu);
+                            const Vec8f z = bval + Vec8f().load_a(tT + mu);
                             min(z, FLT_MAX * 0.9f).store_a(pT + mu);
                             idx.store_nt(piT + mu);
                         }
@@ -300,15 +300,15 @@ void filter_sse2(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, V
     }
 }
 
-template void filter_sse2<uint8_t, int>(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, VSFrame* mcp, VSFrame** pad, VSFrame* dst,
+template void filter_avx2<uint8_t, int>(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, VSFrame* mcp, VSFrame** pad, VSFrame* dst,
                                         void* _srcVector, uint8_t* _mskVector, bool* VS_RESTRICT bmask, float* ccosts, float* pcosts, int* _pbackt,
                                         int* VS_RESTRICT fpath, int* _dmap, const int field_n, const EEDI3Data* VS_RESTRICT d, const VSAPI* vsapi) noexcept;
 
-template void filter_sse2<uint16_t, int>(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, VSFrame* mcp, VSFrame** pad, VSFrame* dst,
+template void filter_avx2<uint16_t, int>(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, VSFrame* mcp, VSFrame** pad, VSFrame* dst,
                                          void* _srcVector, uint8_t* _mskVector, bool* VS_RESTRICT bmask, float* ccosts, float* pcosts, int* _pbackt,
                                          int* VS_RESTRICT fpath, int* _dmap, const int field_n, const EEDI3Data* VS_RESTRICT d, const VSAPI* vsapi) noexcept;
 
-template void filter_sse2<float, float>(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, VSFrame* mcp, VSFrame** pad, VSFrame* dst,
+template void filter_avx2<float, float>(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, VSFrame* mcp, VSFrame** pad, VSFrame* dst,
                                         void* _srcVector, uint8_t* _mskVector, bool* VS_RESTRICT bmask, float* ccosts, float* pcosts, int* _pbackt,
                                         int* VS_RESTRICT fpath, int* _dmap, const int field_n, const EEDI3Data* VS_RESTRICT d, const VSAPI* vsapi) noexcept;
 #endif
