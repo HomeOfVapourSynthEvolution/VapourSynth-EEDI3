@@ -569,7 +569,7 @@ static void VS_CC eedi3Create(const VSMap* in, VSMap* out, [[maybe_unused]] void
         if (err)
             d->vthresh2 = 4.0f;
 
-        const int opt = vsapi->mapGetIntSaturated(in, "opt", 0, &err);
+        int opt = vsapi->mapGetIntSaturated(in, "opt", 0, &err);
 
         if (d->field < 0 || d->field > 3)
             throw "field must be 0, 1, 2, or 3"s;
@@ -678,6 +678,9 @@ static void VS_CC eedi3Create(const VSMap* in, VSMap* out, [[maybe_unused]] void
 
 #ifdef EEDI3_X86
             const int iset = instrset_detect();
+
+            if (d->mclip && opt == 0 && iset >= 5)
+                opt = 2;
 
             if ((opt == 0 && iset >= 10) || opt == 4) {
                 d->vectorSize = 16;
