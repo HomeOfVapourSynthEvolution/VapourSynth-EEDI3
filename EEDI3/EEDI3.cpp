@@ -784,7 +784,7 @@ static void VS_CC eedi3Create(const VSMap* in, VSMap* out, [[maybe_unused]] void
 // Init
 
 VS_EXTERNAL_API(void) VapourSynthPluginInit2(VSPlugin* plugin, const VSPLUGINAPI* vspapi) {
-    vspapi->configPlugin("com.holywu.eedi3", "eedi3m", "Enhanced Edge Directed Interpolation 3", VS_MAKE_VERSION(5, 0), VAPOURSYNTH_API_VERSION, 0, plugin);
+    vspapi->configPlugin("com.holywu.eedi3", "eedi3m", "Enhanced Edge Directed Interpolation 3", VS_MAKE_VERSION(6, 0), VAPOURSYNTH_API_VERSION, 0, plugin);
 
     vspapi->registerFunction("EEDI3",
                              "clip:vnode;"
