@@ -18,7 +18,7 @@ static inline void calculateConnectionCosts(const vector_t* srcp, const bool* bm
                     const int u2 = u * 2;
                     const bool s1Flag = (u >= 0 && x >= u2) || (u <= 0 && x < width + u2);
                     const bool s2Flag = (u <= 0 && x >= -u2) || (u >= 0 && x < width + u2);
-                    Vec8i s0 = zero_si256(), s1 = zero_si256(), s2 = zero_si256();
+                    Vec8i s0 = zero_si256(), s1, s2;
 
                     for (int k = -(d->nrad); k <= d->nrad; k++) {
                         s0 += abs(Vec8i().load_a(src3p + x + u + k) - Vec8i().load_a(src1p + x - u + k)) +
@@ -27,6 +27,7 @@ static inline void calculateConnectionCosts(const vector_t* srcp, const bool* bm
                     }
 
                     if (s1Flag) {
+                        s1 = zero_si256();
                         for (int k = -(d->nrad); k <= d->nrad; k++) {
                             s1 += abs(Vec8i().load_a(src3p + x + k) - Vec8i().load_a(src1p + x - u2 + k)) +
                                 abs(Vec8i().load_a(src1p + x + k) - Vec8i().load_a(src1n + x - u2 + k)) +
@@ -35,6 +36,7 @@ static inline void calculateConnectionCosts(const vector_t* srcp, const bool* bm
                     }
 
                     if (s2Flag) {
+                        s2 = zero_si256();
                         for (int k = -(d->nrad); k <= d->nrad; k++) {
                             s2 += abs(Vec8i().load_a(src3p + x + u2 + k) - Vec8i().load_a(src1p + x + k)) +
                                 abs(Vec8i().load_a(src1p + x + u2 + k) - Vec8i().load_a(src1n + x + k)) +
@@ -91,7 +93,7 @@ inline void calculateConnectionCosts(const float* srcp, const bool* bmask, float
                     const int u2 = u * 2;
                     const bool s1Flag = (u >= 0 && x >= u2) || (u <= 0 && x < width + u2);
                     const bool s2Flag = (u <= 0 && x >= -u2) || (u >= 0 && x < width + u2);
-                    Vec8f s0 = zero_8f(), s1 = zero_8f(), s2 = zero_8f();
+                    Vec8f s0 = zero_8f(), s1, s2;
 
                     for (int k = -(d->nrad); k <= d->nrad; k++) {
                         s0 += abs(Vec8f().load_a(src3p + x + u + k) - Vec8f().load_a(src1p + x - u + k)) +
@@ -100,6 +102,7 @@ inline void calculateConnectionCosts(const float* srcp, const bool* bmask, float
                     }
 
                     if (s1Flag) {
+                        s1 = zero_8f();
                         for (int k = -(d->nrad); k <= d->nrad; k++) {
                             s1 += abs(Vec8f().load_a(src3p + x + k) - Vec8f().load_a(src1p + x - u2 + k)) +
                                 abs(Vec8f().load_a(src1p + x + k) - Vec8f().load_a(src1n + x - u2 + k)) +
@@ -108,6 +111,7 @@ inline void calculateConnectionCosts(const float* srcp, const bool* bmask, float
                     }
 
                     if (s2Flag) {
+                        s2 = zero_8f();
                         for (int k = -(d->nrad); k <= d->nrad; k++) {
                             s2 += abs(Vec8f().load_a(src3p + x + u2 + k) - Vec8f().load_a(src1p + x + k)) +
                                 abs(Vec8f().load_a(src1p + x + u2 + k) - Vec8f().load_a(src1n + x + k)) +

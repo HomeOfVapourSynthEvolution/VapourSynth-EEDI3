@@ -59,7 +59,7 @@ protected:
     Vec256b z1;                         // high half
 public:
     // Default constructor:
-    Vec512b() = default;
+    Vec512b() {}
     // Constructor to build from two Vec256b:
     Vec512b(Vec256b const a0, Vec256b const a1) {
         z0 = a0;  z1 = a1;
@@ -168,7 +168,7 @@ static inline Vec512b andnot (Vec512b const a, Vec512b const b) {
 class Vec16b : public Vec512b {
 public:
     // Default constructor:
-    Vec16b() = default;
+    Vec16b() {}
     // Constructor to build from all elements:
     Vec16b(bool b0, bool b1, bool b2, bool b3, bool b4, bool b5, bool b6, bool b7,
     bool b8, bool b9, bool b10, bool b11, bool b12, bool b13, bool b14, bool b15) {
@@ -330,7 +330,7 @@ static inline bool horizontal_or (Vec16b const a) {
 class Vec16ib : public Vec16b {
 public:
     // Default constructor:
-    Vec16ib () = default;
+    Vec16ib () {}
     /*
     Vec16ib (Vec16b const & x) {
         z0 = x.get_low();
@@ -453,7 +453,7 @@ static inline Vec16ib andnot (Vec16ib const a, Vec16ib const b) {
 class Vec8b : public Vec16b {
 public:
     // Default constructor:
-    Vec8b () = default;
+    Vec8b () {}
     /*
     Vec8b (Vec16b const & x) {
         z0 = x.get_low();
@@ -532,7 +532,7 @@ public:
 class Vec8qb : public Vec8b {
 public:
     // Default constructor:
-    Vec8qb() = default;
+    Vec8qb() {}
     Vec8qb (Vec16b const x) {
         z0 = x.get_low();
         z1 = x.get_high();
@@ -654,7 +654,7 @@ static inline Vec8qb andnot (Vec8qb const a, Vec8qb const b) {
 class Vec16i: public Vec512b {
 public:
     // Default constructor:
-    Vec16i() = default;
+    Vec16i() {}
     // Constructor to broadcast the same value into all elements:
     Vec16i(int i) {
         z0 = z1 = Vec8i(i);
@@ -995,7 +995,7 @@ static inline Vec16i rotate_left(Vec16i const a, int b) {
 class Vec16ui : public Vec16i {
 public:
     // Default constructor:
-    Vec16ui() = default;
+    Vec16ui() {}
     // Constructor to broadcast the same value into all elements:
     Vec16ui(uint32_t i) {
         z0 = z1 = Vec8ui(i);
@@ -1208,7 +1208,7 @@ static inline Vec16ui min(Vec16ui const a, Vec16ui const b) {
 class Vec8q : public Vec512b {
 public:
     // Default constructor:
-    Vec8q() = default;
+    Vec8q() {}
     // Constructor to broadcast the same value into all elements:
     Vec8q(int64_t i) {
         z0 = z1 = Vec4q(i);
@@ -1549,7 +1549,7 @@ static inline Vec8q rotate_left(Vec8q const a, int b) {
 class Vec8uq : public Vec8q {
 public:
     // Default constructor:
-    Vec8uq() = default;
+    Vec8uq() {}
     // Constructor to broadcast the same value into all elements:
     Vec8uq(uint64_t i) {
         z0 = z1 = Vec4uq(i);

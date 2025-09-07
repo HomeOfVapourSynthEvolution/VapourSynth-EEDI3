@@ -93,7 +93,7 @@ protected:
     __m128 xmm; // Float vector
 public:
     // Default constructor:
-    Vec4fb() = default;
+    Vec4fb() {}
     // Constructor to build from all elements:
     Vec4fb(bool b0, bool b1, bool b2, bool b3) {
         xmm = _mm_castsi128_ps(_mm_setr_epi32(-(int)b0, -(int)b1, -(int)b2, -(int)b3));
@@ -296,7 +296,7 @@ protected:
     __m128d xmm; // Double vector
 public:
     // Default constructor:
-    Vec2db() = default;
+    Vec2db() {}
     // Constructor to broadcast scalar value:
     Vec2db(bool b) {
         xmm = _mm_castsi128_pd(_mm_set1_epi32(-int32_t(b)));
@@ -484,7 +484,7 @@ protected:
     __m128 xmm; // Float vector
 public:
     // Default constructor:
-    Vec4f() = default;
+    Vec4f() {}
     // Constructor to broadcast the same value into all elements:
     Vec4f(float f) {
         xmm = _mm_set1_ps(f);
@@ -1490,7 +1490,7 @@ protected:
     __m128d xmm; // double vector
 public:
     // Default constructor:
-    Vec2d() = default;
+    Vec2d() {}
     // Constructor to broadcast the same value into all elements:
     Vec2d(double d) {
         xmm = _mm_set1_pd(d);

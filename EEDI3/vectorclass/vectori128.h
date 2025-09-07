@@ -82,7 +82,7 @@ protected:
     __mmask16  mm; // Boolean mask register
 public:
     // Default constructor:
-    Vec16b() = default;
+    Vec16b() {}
     // Constructor to convert from type __mmask16 used in intrinsics
     Vec16b(__mmask16 x) {
         mm = x;
@@ -184,7 +184,7 @@ protected:
     Vec8b_masktype mm;  // Boolean mask register
 public:
     // Default constructor:
-    Vec8b() = default;
+    Vec8b() {}
     // Constructor to convert from type  __mmask8 used in intrinsics
     Vec8b(__mmask8 x) {
         mm = __mmask8(x);
@@ -280,7 +280,7 @@ inline Vec8b Vec16b::get_high() const {
 class Vec4b : public Vec8b {
 public:
     // Default constructor:
-    Vec4b() = default;
+    Vec4b() {}
     // Constructor to make from two halves
     inline Vec4b(Vec2b const x0, Vec2b const x1); // Implemented below after declaration of Vec4b
 
@@ -324,7 +324,7 @@ public:
 class Vec2b : public Vec8b {
 public:
     // Default constructor:
-    Vec2b() = default;
+    Vec2b() {}
     // Constructor to convert from type  __mmask8 used in intrinsics
     Vec2b(__mmask8 x) {
         mm = x;
@@ -746,7 +746,7 @@ protected:
     __m128i xmm; // Integer vector
 public:
     // Default constructor:
-    Vec128b() = default;
+    Vec128b() {}
     // Constructor to convert from type __m128i used in intrinsics:
     Vec128b(__m128i const x) {
         xmm = x;
@@ -942,7 +942,7 @@ static inline bool horizontal_or(Vec128b const a) {
 class Vec16c : public Vec128b {
 public:
     // Default constructor:
-    Vec16c() = default;
+    Vec16c() {}
     // Constructor to broadcast the same value into all elements:
     Vec16c(int i) {
         xmm = _mm_set1_epi8((char)i);
@@ -1080,7 +1080,7 @@ public:
 class Vec16cb : public Vec16c {
 public:
     // Default constructor
-    Vec16cb() = default;
+    Vec16cb() {}
     // Constructor to build from all elements:
     Vec16cb(bool x0, bool x1, bool x2, bool x3, bool x4, bool x5, bool x6, bool x7,
         bool x8, bool x9, bool x10, bool x11, bool x12, bool x13, bool x14, bool x15) {
@@ -1610,7 +1610,7 @@ static inline Vec16c rotate_left(Vec16c const a, int b) {
 class Vec16uc : public Vec16c {
 public:
     // Default constructor:
-    Vec16uc() = default;
+    Vec16uc() {}
     // Constructor to broadcast the same value into all elements:
     Vec16uc(uint32_t i) {
         xmm = _mm_set1_epi8((char)i);
@@ -1860,7 +1860,7 @@ static inline Vec16uc min(Vec16uc const a, Vec16uc const b) {
 class Vec8s : public Vec128b {
 public:
     // Default constructor:
-    Vec8s() = default;
+    Vec8s() {}
     // Constructor to broadcast the same value into all elements:
     Vec8s(int i) {
         xmm = _mm_set1_epi16((int16_t)i);
@@ -2029,7 +2029,7 @@ public:
         xmm = Vec8s(-int16_t(x0), -int16_t(x1), -int16_t(x2), -int16_t(x3), -int16_t(x4), -int16_t(x5), -int16_t(x6), -int16_t(x7));
     }
     // Default constructor:
-    Vec8sb() = default;
+    Vec8sb() {}
     // Constructor to convert from type __m128i used in intrinsics:
     Vec8sb(__m128i const x) {
         xmm = x;
@@ -2507,7 +2507,7 @@ static inline Vec8s rotate_left(Vec8s const a, int b) {
 class Vec8us : public Vec8s {
 public:
     // Default constructor:
-    Vec8us() = default;
+    Vec8us() {}
     // Constructor to broadcast the same value into all elements:
     Vec8us(uint32_t i) {
         xmm = _mm_set1_epi16((int16_t)i);
@@ -2825,7 +2825,7 @@ static inline Vec8us min(Vec8us const a, Vec8us const b) {
 class Vec4i : public Vec128b {
 public:
     // Default constructor:
-    Vec4i() = default;
+    Vec4i() {}
     // Constructor to broadcast the same value into all elements:
     Vec4i(int i) {
         xmm = _mm_set1_epi32(i);
@@ -2967,7 +2967,7 @@ public:
 class Vec4ib : public Vec4i {
 public:
     // Default constructor:
-    Vec4ib() = default;
+    Vec4ib() {}
     // Constructor to build from all elements:
     Vec4ib(bool x0, bool x1, bool x2, bool x3) {
         xmm = Vec4i(-int32_t(x0), -int32_t(x1), -int32_t(x2), -int32_t(x3));
@@ -3498,7 +3498,7 @@ static inline Vec4i rotate_left(Vec4i const a, int b) {
 class Vec4ui : public Vec4i {
 public:
     // Default constructor:
-    Vec4ui() = default;
+    Vec4ui() {}
     // Constructor to broadcast the same value into all elements:
     Vec4ui(uint32_t i) {
         xmm = _mm_set1_epi32((int32_t)i);
@@ -3774,7 +3774,7 @@ static inline Vec4ui min(Vec4ui const a, Vec4ui const b) {
 class Vec2q : public Vec128b {
 public:
     // Default constructor:
-    Vec2q() = default;
+    Vec2q() {}
     // Constructor to broadcast the same value into all elements:
     Vec2q(int64_t i) {
         xmm = _mm_set1_epi64x(i);
@@ -3919,7 +3919,7 @@ public:
 class Vec2qb : public Vec2q {
 public:
     // Default constructor:
-    Vec2qb() = default;
+    Vec2qb() {}
     // Constructor to build from all elements:
     Vec2qb(bool x0, bool x1) {
         xmm = Vec2q(-int64_t(x0), -int64_t(x1));
@@ -4426,7 +4426,7 @@ static inline Vec2q rotate_left(Vec2q const a, int b) {
 class Vec2uq : public Vec2q {
 public:
     // Default constructor:
-    Vec2uq() = default;
+    Vec2uq() {}
     // Constructor to broadcast the same value into all elements:
     Vec2uq(uint64_t i) {
         xmm = Vec2q((int64_t)i);
@@ -6368,7 +6368,7 @@ protected:
     __m128i shift1;                                        // shift count used in fast division
     __m128i sign;                                          // sign of divisor
 public:
-    Divisor_i() = default;                                 // Default constructor
+    Divisor_i() {}                                         // Default constructor
     Divisor_i(int32_t d) {                                 // Constructor with divisor
         set(d);
     }
@@ -6416,7 +6416,7 @@ protected:
     __m128i shift1;                                        // shift count 1 used in fast division
     __m128i shift2;                                        // shift count 2 used in fast division
 public:
-    Divisor_ui() = default;                                // Default constructor
+    Divisor_ui() {}                                        // Default constructor
     Divisor_ui(uint32_t d) {                               // Constructor with divisor
         set(d);
     }
@@ -6466,7 +6466,7 @@ protected:
     __m128i shift1;                                        // shift count used in fast division
     __m128i sign;                                          // sign of divisor
 public:
-    Divisor_s() = default;                                 // Default constructor
+    Divisor_s() {}                                         // Default constructor
     Divisor_s(int16_t d) {                                 // Constructor with divisor
         set(d);
     }
@@ -6514,7 +6514,7 @@ protected:
     __m128i shift1;                                        // shift count 1 used in fast division
     __m128i shift2;                                        // shift count 2 used in fast division
 public:
-    Divisor_us() = default;                                // Default constructor
+    Divisor_us() {}                                        // Default constructor
     Divisor_us(uint16_t d) {                               // Constructor with divisor
         set(d);
     }

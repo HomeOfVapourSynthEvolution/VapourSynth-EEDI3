@@ -57,7 +57,7 @@ namespace VCL_NAMESPACE {
 class Vec64c: public Vec512b {
 public:
     // Default constructor:
-    Vec64c() = default;
+    Vec64c() {}
     // Constructor to broadcast the same value into all elements:
     Vec64c(int8_t i) {
         zmm = _mm512_set1_epi8(i);
@@ -181,7 +181,7 @@ protected:
     __mmask64  mm; // Boolean vector
 public:
     // Default constructor:
-    Vec64b () = default;
+    Vec64b () {}
     // Constructor to build from all elements:
     /*
     Vec64b(bool b0, bool b1, bool b2, bool b3, bool b4, bool b5, bool b6, bool b7,
@@ -626,7 +626,7 @@ static inline Vec64c rotate_left(Vec64c const a, int b) {
 class Vec64uc : public Vec64c {
 public:
     // Default constructor:
-    Vec64uc() = default;
+    Vec64uc() {}
     // Constructor to broadcast the same value into all elements:
     Vec64uc(uint8_t i) {
         zmm = _mm512_set1_epi8((int8_t)i);
@@ -839,7 +839,7 @@ static inline Vec64uc min(Vec64uc const a, Vec64uc const b) {
 class Vec32s: public Vec512b {
 public:
     // Default constructor:
-    Vec32s() = default;
+    Vec32s() {}
     // Constructor to broadcast the same value into all elements:
     Vec32s(int16_t i) {
         zmm = _mm512_set1_epi16(i);
@@ -1193,7 +1193,7 @@ static inline Vec32s rotate_left(Vec32s const a, int b) {
 class Vec32us : public Vec32s {
 public:
     // Default constructor:
-    Vec32us() = default;
+    Vec32us() {}
     // Constructor to broadcast the same value into all elements:
     Vec32us(uint16_t i) {
         zmm = _mm512_set1_epi16((int16_t)i);

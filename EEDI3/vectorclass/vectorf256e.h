@@ -55,7 +55,7 @@ protected:
     __m128 y0;                         // low half
     __m128 y1;                         // high half
 public:
-    Vec256fe() = default;              // default constructor
+    Vec256fe() {}              // default constructor
     Vec256fe(__m128 x0, __m128 x1) {   // constructor to build from two __m128
         y0 = x0;  y1 = x1;
     }
@@ -70,7 +70,7 @@ public:
 // base class to replace __m256d when AVX is not supported
 class Vec256de {
 public:
-    Vec256de() = default;              // default constructor
+    Vec256de() {}              // default constructor
     Vec256de(__m128d x0, __m128d x1) { // constructor to build from two __m128d
         y0 = x0;  y1 = x1;
     }
@@ -118,7 +118,7 @@ static inline Vec256de selectd (Vec256de const s, Vec256de const a, Vec256de con
 class Vec8fb : public Vec256fe {
 public:
     // Default constructor:
-    Vec8fb() = default;
+    Vec8fb() {}
     // Constructor to build from all elements:
     Vec8fb(bool b0, bool b1, bool b2, bool b3, bool b4, bool b5, bool b6, bool b7) {
         y0 = Vec4fb(b0, b1, b2, b3);
@@ -305,7 +305,7 @@ static inline bool horizontal_or (Vec8fb const a) {
 class Vec4db : public Vec256de {
 public:
     // Default constructor:
-    Vec4db() = default;
+    Vec4db() {}
     // Constructor to build from all elements:
     Vec4db(bool b0, bool b1, bool b2, bool b3) {
         y0 = Vec2db(b0, b1);
@@ -492,7 +492,7 @@ static inline bool horizontal_or (Vec4db const a) {
 class Vec8f : public Vec256fe {
 public:
     // Default constructor:
-    Vec8f() = default;
+    Vec8f() {}
     // Constructor to broadcast the same value into all elements:
     Vec8f(float f) {
         y1 = y0 = _mm_set1_ps(f);
@@ -1085,7 +1085,7 @@ inline Vec8f change_sign(Vec8f const a) {
 class Vec4d : public Vec256de {
 public:
     // Default constructor:
-    Vec4d() = default;
+    Vec4d() {}
     // Constructor to broadcast the same value into all elements:
     Vec4d(double d) {
         y1 = y0 = _mm_set1_pd(d);

@@ -78,7 +78,7 @@ namespace VCL_NAMESPACE {
         uint16_t x;
     public:
     // Default constructor:
-        Float16() = default;
+        Float16() {}
 #ifdef __F16C__   // F16C instruction set includes conversion instructions
     Float16(float f) { // Constructor to convert float to fp16
         //x = uint16_t(_mm_cvtsi128_si32(_mm_cvtps_ph(_mm_set1_ps(f), _MM_FROUND_NO_EXC))); // requires __AVX512FP16__
@@ -251,7 +251,7 @@ protected:
     __m128i xmm; // Float vector
 public:
     // Default constructor:
-    Vec8h() = default;
+    Vec8h() {}
     // Constructor to broadcast the same value into all elements:
     Vec8h(Float16 f) {
         xmm = _mm_set1_epi16 (castfp162s(f));
@@ -1246,7 +1246,7 @@ static inline Vec16hb Vec16fb2hb (Vec16fb const a) {
 class Vec16h : public Vec16s {
 public:
     // Default constructor:
-    Vec16h() = default;
+    Vec16h() {}
     // Constructor to broadcast the same value into all elements:
     Vec16h(Float16 f) : Vec16s(castfp162s(f)) {}
     Vec16h(float f) : Vec16s(castfp162s(Float16(f))) {}
@@ -2045,7 +2045,7 @@ typedef Vec32sb Vec32hb;  // broad boolean vector
 class Vec32h : public Vec32s {
 public:
     // Default constructor:
-    Vec32h() = default;
+    Vec32h() {}
     // Constructor to broadcast the same value into all elements:
     Vec32h(Float16 f) : Vec32s(castfp162s(f)) {}   
     Vec32h(float f) : Vec32s(castfp162s(Float16(f))) {} 

@@ -95,7 +95,7 @@ protected:
     __m512 zmm; // Float vector
 public:
     // Default constructor:
-    Vec16f() = default;
+    Vec16f() {}
     // Constructor to broadcast the same value into all elements:
     Vec16f(float f) {
         zmm = _mm512_set1_ps(f);
@@ -749,7 +749,7 @@ protected:
     __m512d zmm; // double vector
 public:
     // Default constructor:
-    Vec8d() = default;
+    Vec8d() {}
     // Constructor to broadcast the same value into all elements:
     Vec8d(double d) {
         zmm = _mm512_set1_pd(d);

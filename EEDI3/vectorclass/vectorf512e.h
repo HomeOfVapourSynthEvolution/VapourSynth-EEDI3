@@ -52,7 +52,7 @@ namespace VCL_NAMESPACE {
 class Vec16fb : public Vec16b {
 public:
     // Default constructor:
-    Vec16fb () = default;
+    Vec16fb () {}
     // Constructor to build from all elements:
     Vec16fb(bool x0, bool x1, bool x2, bool x3, bool x4, bool x5, bool x6, bool x7,
         bool x8, bool x9, bool x10, bool x11, bool x12, bool x13, bool x14, bool x15) :
@@ -170,7 +170,7 @@ static inline Vec16fb & operator ^= (Vec16fb & a, Vec16fb const b) {
 class Vec8db : public Vec512b {
 public:
     // Default constructor:
-    Vec8db () = default;
+    Vec8db () {}
     // Constructor to build from all elements:
     Vec8db(bool x0, bool x1, bool x2, bool x3, bool x4, bool x5, bool x6, bool x7) {
         z0 = Vec4qb(x0, x1, x2, x3);
@@ -321,7 +321,7 @@ protected:
     Vec8f z1;
 public:
     // Default constructor:
-    Vec16f() = default;
+    Vec16f() {}
     // Constructor to broadcast the same value into all elements:
     Vec16f(float f) {
         z0 = z1 = Vec8f(f);
@@ -957,7 +957,7 @@ protected:
     Vec4d z1;
 public:
     // Default constructor:
-    Vec8d() = default;
+    Vec8d() {}
     // Constructor to broadcast the same value into all elements:
     Vec8d(double d) {
         z0 = z1 = Vec4d(d);

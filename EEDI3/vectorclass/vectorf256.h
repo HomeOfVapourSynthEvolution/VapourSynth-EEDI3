@@ -81,7 +81,7 @@ protected:
     __m256 ymm; // Float vector
 public:
     // Default constructor:
-    Vec8fb() = default;
+    Vec8fb() {}
     // Constructor to build from all elements:
     Vec8fb(bool b0, bool b1, bool b2, bool b3, bool b4, bool b5, bool b6, bool b7) {
 #if INSTRSET >= 8  // AVX2
@@ -325,7 +325,7 @@ protected:
     __m256d ymm; // double vector
 public:
     // Default constructor:
-    Vec4db() = default;
+    Vec4db() {}
     // Constructor to build from all elements:
     Vec4db(bool b0, bool b1, bool b2, bool b3) {
 #if INSTRSET >= 8  // AVX2
@@ -575,7 +575,7 @@ protected:
     __m256 ymm; // Float vector
 public:
     // Default constructor:
-    Vec8f() = default;
+    Vec8f() {}
     // Constructor to broadcast the same value into all elements:
     Vec8f(float f) {
         ymm = _mm256_set1_ps(f);
@@ -1447,7 +1447,7 @@ protected:
     __m256d ymm; // double vector
 public:
     // Default constructor:
-    Vec4d() = default;
+    Vec4d() {}
     // Constructor to broadcast the same value into all elements:
     Vec4d(double d) {
         ymm = _mm256_set1_pd(d);

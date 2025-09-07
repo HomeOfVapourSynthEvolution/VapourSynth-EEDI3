@@ -85,7 +85,7 @@ protected:
     __m512i zmm; // Integer vector
 public:
     // Default constructor:
-    Vec512b() = default;
+    Vec512b() {}
     // Constructor to build from two Vec256b:
     Vec512b(Vec256b const a0, Vec256b const a1) {
         zmm = _mm512_inserti64x4(_mm512_castsi256_si512(a0), a1, 1);
@@ -213,7 +213,7 @@ static inline __m512i zero_si512() {
 class Vec16i: public Vec512b {
 public:
     // Default constructor:
-    Vec16i() = default;
+    Vec16i() {}
     // Constructor to broadcast the same value into all elements:
     Vec16i(int i) {
         zmm = _mm512_set1_epi32(i);
@@ -552,7 +552,7 @@ static inline Vec16i rotate_left(Vec16i const a, int b) {
 class Vec16ui : public Vec16i {
 public:
     // Default constructor:
-    Vec16ui() = default;
+    Vec16ui() {}
     // Constructor to broadcast the same value into all elements:
     Vec16ui(uint32_t i) {
         zmm = _mm512_set1_epi32((int32_t)i);
@@ -765,7 +765,7 @@ static inline Vec16ui min(Vec16ui const a, Vec16ui const b) {
 class Vec8q : public Vec512b {
 public:
     // Default constructor:
-    Vec8q() = default;
+    Vec8q() {}
     // Constructor to broadcast the same value into all elements:
     Vec8q(int64_t i) {
         zmm = _mm512_set1_epi64(i);
@@ -1103,7 +1103,7 @@ static inline Vec8q rotate_left(Vec8q const a, int b) {
 class Vec8uq : public Vec8q {
 public:
     // Default constructor:
-    Vec8uq() = default;
+    Vec8uq() {}
     // Constructor to broadcast the same value into all elements:
     Vec8uq(uint64_t i) {
         zmm = Vec8q((int64_t)i);

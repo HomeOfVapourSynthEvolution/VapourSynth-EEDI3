@@ -75,7 +75,7 @@ protected:
     __m128h xmm; // Float vector
 public:
     // Default constructor:
-    Vec8h() = default;
+    Vec8h() {}
     // Constructor to broadcast the same value into all elements:
     Vec8h(_Float16 f) {
         xmm = _mm_set1_ph (f);
@@ -824,7 +824,7 @@ protected:
     __m256h ymm; // Float vector
 public:
     // Default constructor:
-    Vec16h() = default;
+    Vec16h() {}
     // Constructor to broadcast the same value into all elements:
     Vec16h(_Float16 f) {
         ymm = _mm256_set1_ph (f);
@@ -1577,7 +1577,7 @@ protected:
     __m512h zmm; // Float vector
 public:
     // Default constructor:
-    Vec32h() = default;
+    Vec32h() {}
     // Constructor to broadcast the same value into all elements:
     Vec32h(_Float16 f) {
         zmm = _mm512_set1_ph (f);

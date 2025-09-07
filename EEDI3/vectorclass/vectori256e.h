@@ -66,7 +66,7 @@ protected:
     __m128i y1;                        // high half
 public:
     // Default constructor:
-    Vec256b() = default;
+    Vec256b() {}
     Vec256b(__m128i x0, __m128i x1) {  // constructor to build from two __m128i
         y0 = x0;  y1 = x1;
     }
@@ -210,7 +210,7 @@ static inline bool horizontal_or (Vec256b const a) {
 class Vec32c : public Vec256b {
 public:
     // Default constructor:
-    Vec32c() = default;
+    Vec32c() {}
     // Constructor to broadcast the same value into all elements:
     Vec32c(int i) {
         y1 = y0 = _mm_set1_epi8((char)i);
@@ -341,7 +341,7 @@ public:
 class Vec32cb : public Vec32c {
 public:
     // Default constructor:
-    Vec32cb() = default;
+    Vec32cb() {}
     // Constructor to convert from type Vec256b
     Vec32cb(Vec256b const x) {
         y0 = x.get_low();
@@ -727,7 +727,7 @@ static inline Vec32c rotate_left(Vec32c const a, int b) {
 class Vec32uc : public Vec32c {
 public:
     // Default constructor:
-    Vec32uc() = default;
+    Vec32uc() {}
     // Constructor to broadcast the same value into all elements:
     Vec32uc(uint32_t i) {
         y1 = y0 = _mm_set1_epi8((char)i);
@@ -958,7 +958,7 @@ static inline Vec32uc min(Vec32uc const a, Vec32uc const b) {
 class Vec16s : public Vec256b {
 public:
     // Default constructor:
-    Vec16s() = default;
+    Vec16s() {}
     // Constructor to broadcast the same value into all elements:
     Vec16s(int i) {
         y1 = y0 = _mm_set1_epi16((int16_t)i);
@@ -1080,7 +1080,7 @@ public:
 class Vec16sb : public Vec16s {
 public:
     // Default constructor:
-    Vec16sb() = default;
+    Vec16sb() {}
     // Constructor to build from all elements:
     Vec16sb(bool x0, bool x1, bool x2, bool x3, bool x4, bool x5, bool x6, bool x7,
         bool x8, bool x9, bool x10, bool x11, bool x12, bool x13, bool x14, bool x15) :
@@ -1466,7 +1466,7 @@ static inline Vec16s rotate_left(Vec16s const a, int b) {
 class Vec16us : public Vec16s {
 public:
     // Default constructor:
-    Vec16us() = default;
+    Vec16us() {}
     // Constructor to broadcast the same value into all elements:
     Vec16us(uint32_t i) {
         y1 = y0 = _mm_set1_epi16((int16_t)i);
@@ -1695,7 +1695,7 @@ static inline Vec16us min(Vec16us const a, Vec16us const b) {
 class Vec8i : public Vec256b {
 public:
     // Default constructor:
-    Vec8i() = default;
+    Vec8i() {}
     // Constructor to broadcast the same value into all elements:
     Vec8i(int i) {
         y1 = y0 = _mm_set1_epi32(i);
@@ -1816,7 +1816,7 @@ public:
 class Vec8ib : public Vec8i {
 public:
     // Default constructor:
-    Vec8ib() = default;
+    Vec8ib() {}
     // Constructor to build from all elements:
     Vec8ib(bool x0, bool x1, bool x2, bool x3, bool x4, bool x5, bool x6, bool x7) :
         Vec8i(-int32_t(x0), -int32_t(x1), -int32_t(x2), -int32_t(x3), -int32_t(x4), -int32_t(x5), -int32_t(x6), -int32_t(x7))
@@ -2203,7 +2203,7 @@ static inline Vec8i rotate_left(Vec8i const a, int b) {
 class Vec8ui : public Vec8i {
 public:
     // Default constructor:
-    Vec8ui() = default;
+    Vec8ui() {}
     // Constructor to broadcast the same value into all elements:
     Vec8ui(uint32_t i) {
         y1 = y0 = _mm_set1_epi32(int32_t(i));
@@ -2436,7 +2436,7 @@ static inline Vec8ui min(Vec8ui const a, Vec8ui const b) {
 class Vec4q : public Vec256b {
 public:
     // Default constructor:
-    Vec4q() = default;
+    Vec4q() {}
     // Constructor to broadcast the same value into all elements:
     Vec4q(int64_t i) {
         y0 = y1 = Vec2q(i);
@@ -2557,7 +2557,7 @@ public:
 class Vec4qb : public Vec4q {
 public:
     // Default constructor:
-    Vec4qb() = default;
+    Vec4qb() {}
     // Constructor to build from all elements:
     Vec4qb(bool x0, bool x1, bool x2, bool x3) :
         Vec4q(-int64_t(x0), -int64_t(x1), -int64_t(x2), -int64_t(x3)) {
@@ -2919,7 +2919,7 @@ static inline Vec4q rotate_left(Vec4q const a, int b) {
 class Vec4uq : public Vec4q {
 public:
     // Default constructor:
-    Vec4uq() = default;
+    Vec4uq() {}
     // Constructor to broadcast the same value into all elements:
     Vec4uq(uint64_t i) {
         y1 = y0 = Vec2q((int64_t)i);

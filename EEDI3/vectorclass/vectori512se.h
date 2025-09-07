@@ -60,7 +60,7 @@ protected:
     Vec256b z1;          // higher 256 bits
 public:
     // Default constructor:
-    Vec64c() = default;
+    Vec64c() {}
     // Constructor to build from two Vec32c:
     Vec64c(Vec32c const a0, Vec32c const a1) {
         z0 = a0;
@@ -239,7 +239,7 @@ public:
 class Vec64cb : public Vec64c {
 public:
     // Default constructor:
-    Vec64cb() = default;
+    Vec64cb() {}
 
     Vec64cb (Vec64c const a) : Vec64c(a) {}
 
@@ -639,7 +639,7 @@ static inline Vec64c rotate_left(Vec64c const a, int b) {
 class Vec64uc : public Vec64c {
 public:
     // Default constructor:
-    Vec64uc() = default;
+    Vec64uc() {}
     // Construct from Vec64c
     Vec64uc(Vec64c const a) : Vec64c(a) {
     }
@@ -862,7 +862,7 @@ static inline Vec64uc min(Vec64uc const a, Vec64uc const b) {
 class Vec32s : public Vec64c {
 public:
     // Default constructor:
-    Vec32s() = default;
+    Vec32s() {}
     // Constructor to broadcast the same value into all elements:
     Vec32s(int16_t i) {
         z0 = z1 = Vec16s(i);
@@ -1011,7 +1011,7 @@ public:
 class Vec32sb : public Vec32s {
 public:
     // Default constructor:
-    Vec32sb() = default;
+    Vec32sb() {}
     // Constructor to build from all elements: Not implemented
 
     // Constructor to convert from type __mmask32 used in intrinsics: not possible
@@ -1391,7 +1391,7 @@ static inline Vec32s rotate_left(Vec32s const a, int b) {
 class Vec32us : public Vec32s {
 public:
     // Default constructor:
-    Vec32us() = default;
+    Vec32us() {}
     // Construct from Vec32s
     Vec32us(Vec32s const a) {
         z0 = a.get_low();  z1 = a.get_high();
