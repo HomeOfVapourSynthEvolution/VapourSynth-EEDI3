@@ -106,7 +106,7 @@ static inline void interpolate(const pixel_t* src3p, const pixel_t* src1p, const
             dmap[x] = 0;
 
             if (ucubic)
-                dstp[x] = std::min(std::max((9 * (src1p[x] + src1n[x]) - (src3p[x] + src3n[x]) + 8) / 16, 0), peak);
+                dstp[x] = std::clamp((9 * (src1p[x] + src1n[x]) - (src3p[x] + src3n[x]) + 8) / 16, 0, peak);
             else
                 dstp[x] = (src1p[x] + src1n[x] + 1) / 2;
         } else {
@@ -117,7 +117,7 @@ static inline void interpolate(const pixel_t* src3p, const pixel_t* src1p, const
             dmap[x] = dir;
 
             if (ucubic && x >= absDir3 && x <= width - 1 - absDir3)
-                dstp[x] = std::min(std::max((9 * (src1p[x + dir] + src1n[x - dir]) - (src3p[x + dir3] + src3n[x - dir3]) + 8) / 16, 0), peak);
+                dstp[x] = std::clamp((9 * (src1p[x + dir] + src1n[x - dir]) - (src3p[x + dir3] + src3n[x - dir3]) + 8) / 16, 0, peak);
             else
                 dstp[x] = (src1p[x + dir] + src1n[x - dir] + 1) / 2;
         }
@@ -216,7 +216,7 @@ static void vCheck(const pixel_t* srcp, const pixel_t* scpp, pixel_t* VS_RESTRIC
 
             for (int x = 0; x < width; x++) {
                 const int dirc = dmap[x];
-                const pixel_t cint = scpp ? scpp[x] : std::min(std::max((9 * (dst1p[x] + dst1n[x]) - (dst3p[x] + dst3n[x]) + 8) / 16, 0), d->peak);
+                const pixel_t cint = scpp ? scpp[x] : std::clamp((9 * (dst1p[x] + dst1n[x]) - (dst3p[x] + dst3n[x]) + 8) / 16, 0, d->peak);
 
                 if (dirc == 0) {
                     tline[x] = cint;

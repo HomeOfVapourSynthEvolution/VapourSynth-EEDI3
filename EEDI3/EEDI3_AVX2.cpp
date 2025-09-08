@@ -49,7 +49,7 @@ static inline void calculateConnectionCosts(const vector_t* srcp, const bool* bm
 
                     const Vec8i ip = (Vec8i().load_a(src1p + x + u) + Vec8i().load_a(src1n + x - u) + 1) >> 1; // should use cubic if ucubic=true
                     const Vec8i v = abs(Vec8i().load_a(src1p + x) - ip) + abs(Vec8i().load_a(src1n + x) - ip);
-                    const Vec8f result = mul_add(d->alpha, to_float(s0 + s1 + s2), mul_add(d->beta, std::abs(u), d->remainingWeight * to_float(v)));
+                    const Vec8f result = mul_add(d->alpha, to_float(s0 + s1 + s2), mul_add(d->remainingWeight, to_float(v), d->beta * std::abs(u)));
                     result.store_nt(ccosts + (d->tpitch * x + d->mdis + u) * d->vectorSize);
                 }
             }
@@ -69,7 +69,7 @@ static inline void calculateConnectionCosts(const vector_t* srcp, const bool* bm
 
                     const Vec8i ip = (Vec8i().load_a(src1p + x + u) + Vec8i().load_a(src1n + x - u) + 1) >> 1; // should use cubic if ucubic=true
                     const Vec8i v = abs(Vec8i().load_a(src1p + x) - ip) + abs(Vec8i().load_a(src1n + x) - ip);
-                    const Vec8f result = mul_add(d->alpha, to_float(s), mul_add(d->beta, std::abs(u), d->remainingWeight * to_float(v)));
+                    const Vec8f result = mul_add(d->alpha, to_float(s), mul_add(d->remainingWeight, to_float(v), d->beta * std::abs(u)));
                     result.store_nt(ccosts + (d->tpitch * x + d->mdis + u) * d->vectorSize);
                 }
             }
@@ -124,7 +124,7 @@ inline void calculateConnectionCosts(const float* srcp, const bool* bmask, float
 
                     const Vec8f ip = (Vec8f().load_a(src1p + x + u) + Vec8f().load_a(src1n + x - u)) * 0.5f; // should use cubic if ucubic=true
                     const Vec8f v = abs(Vec8f().load_a(src1p + x) - ip) + abs(Vec8f().load_a(src1n + x) - ip);
-                    const Vec8f result = mul_add(d->alpha, s0 + s1 + s2, mul_add(d->beta, std::abs(u), d->remainingWeight * v));
+                    const Vec8f result = mul_add(d->alpha, s0 + s1 + s2, mul_add(d->remainingWeight, v, d->beta * std::abs(u)));
                     result.store_nt(ccosts + (d->tpitch * x + d->mdis + u) * d->vectorSize);
                 }
             }
@@ -144,7 +144,7 @@ inline void calculateConnectionCosts(const float* srcp, const bool* bmask, float
 
                     const Vec8f ip = (Vec8f().load_a(src1p + x + u) + Vec8f().load_a(src1n + x - u)) * 0.5f; // should use cubic if ucubic=true
                     const Vec8f v = abs(Vec8f().load_a(src1p + x) - ip) + abs(Vec8f().load_a(src1n + x) - ip);
-                    const Vec8f result = mul_add(d->alpha, s, mul_add(d->beta, std::abs(u), d->remainingWeight * v));
+                    const Vec8f result = mul_add(d->alpha, s, mul_add(d->remainingWeight, v, d->beta * std::abs(u)));
                     result.store_nt(ccosts + (d->tpitch * x + d->mdis + u) * d->vectorSize);
                 }
             }
@@ -253,7 +253,7 @@ void filter_avx2(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, V
                             Vec8f bval = FLT_MAX;
 
                             for (int v = std::max(-umax2, u - 1); v <= std::min(umax2, u + 1); v++) {
-                                const Vec8f z = mul_add(d->gamma, std::abs(u - v), Vec8f().load_a(ppT + (d->mdis + v) * d->vectorSize));
+                                const Vec8f z = Vec8f().load_a(ppT + (d->mdis + v) * d->vectorSize) + d->gamma * std::abs(u - v);
                                 const Vec8f ccost = min(z, FLT_MAX * 0.9f);
                                 idx = select(Vec8ib(ccost < bval), v, idx);
                                 bval = min(ccost, bval);

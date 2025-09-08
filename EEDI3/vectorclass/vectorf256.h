@@ -614,20 +614,20 @@ public:
         return *this;
     }
     // Member function to store into array (unaligned)
-    void store(float * p) const {
-        _mm256_storeu_ps(p, ymm);
+    void store(void * p) const {
+        _mm256_storeu_ps((float *)p, ymm);
     }
     // Member function storing into array, aligned by 32
     // You may use store_a instead of store if you are certain that p points to an address divisible by 32
-    void store_a(float * p) const {
-        _mm256_store_ps(p, ymm);
+    void store_a(void * p) const {
+        _mm256_store_ps((float *)p, ymm);
     }
     // Member function storing to aligned uncached memory (non-temporal store).
     // This may be more efficient than store_a when storing large blocks of memory if it 
     // is unlikely that the data will stay in the cache until it is read again.
     // Note: Will generate runtime error if p is not aligned by 32
-    void store_nt(float * p) const {
-        _mm256_stream_ps(p, ymm);
+    void store_nt(void * p) const {
+        _mm256_stream_ps((float *)p, ymm);
     }
     // Partial load. Load n elements and set the rest to 0
     Vec8f & load_partial(int n, float const * p) {

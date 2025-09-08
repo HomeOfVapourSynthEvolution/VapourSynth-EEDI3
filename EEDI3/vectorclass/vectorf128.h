@@ -521,23 +521,23 @@ public:
         return *this;
     }
     // Member function to store into array (unaligned)
-    void store(float * p) const {
-        _mm_storeu_ps(p, xmm);
+    void store(void * p) const {
+        _mm_storeu_ps((float *)p, xmm);
     }
     // Member function storing into array, aligned by 16
     // "store_a" is faster than "store" on older Intel processors (Pentium 4, Pentium M, Core 1,
     // Merom, Wolfdale) and Atom, but not on other processors from Intel, AMD or VIA.
     // You may use store_a instead of store if you are certain that p points to an address
     // divisible by 16.
-    void store_a(float * p) const {
-        _mm_store_ps(p, xmm);
+    void store_a(void * p) const {
+        _mm_store_ps((float *)p, xmm);
     }
     // Member function storing to aligned uncached memory (non-temporal store).
     // This may be more efficient than store_a when storing large blocks of memory if it 
     // is unlikely that the data will stay in the cache until it is read again.
     // Note: Will generate runtime error if p is not aligned by 16
-    void store_nt(float * p) const {
-        _mm_stream_ps(p, xmm);
+    void store_nt(void * p) const {
+        _mm_stream_ps((float *)p, xmm);
     }
     // Partial load. Load n elements and set the rest to 0
     Vec4f & load_partial(int n, float const * p) {

@@ -345,13 +345,13 @@ static const VSFrame* VS_CC eedi3GetFrame(int n, int activationReason, void* ins
                 if (d->vectorSize > 1) {
                     auto _srcVector = vsh::vsh_aligned_malloc<float>((d->vi.width + MARGIN_H * 2) * 4 * d->vectorSize * sizeof(float), d->alignment);
                     if (!_srcVector)
-                        throw std::string{ "malloc failure (srcVector)" };
+                        throw "malloc failure (srcVector)"s;
                     d->srcVector.emplace(threadID, aligned_float{ _srcVector, &vsh::vsh_aligned_free });
 
                     if (d->mclip) {
                         auto _mskVector = new (std::nothrow) uint8_t[d->vi.width * d->vectorSize];
                         if (!_mskVector)
-                            throw std::string{ "malloc failure (mskVector)" };
+                            throw "malloc failure (mskVector)"s;
                         d->mskVector.emplace(threadID, _mskVector);
                     } else {
                         d->mskVector.emplace(threadID, nullptr);
@@ -364,7 +364,7 @@ static const VSFrame* VS_CC eedi3GetFrame(int n, int activationReason, void* ins
                 if (d->mclip) {
                     auto _bmask = new (std::nothrow) bool[d->vi.width];
                     if (!_bmask)
-                        throw std::string{ "malloc failure (bmask)" };
+                        throw "malloc failure (bmask)"s;
                     d->bmask.emplace(threadID, _bmask);
                 } else {
                     d->bmask.emplace(threadID, nullptr);
@@ -372,27 +372,27 @@ static const VSFrame* VS_CC eedi3GetFrame(int n, int activationReason, void* ins
 
                 auto _ccosts = vsh::vsh_aligned_malloc<float>(d->vi.width * d->tpitchVector * sizeof(float), d->alignment);
                 if (!_ccosts)
-                    throw std::string{ "malloc failure (ccosts)" };
+                    throw "malloc failure (ccosts)"s;
                 d->ccosts.emplace(threadID, aligned_float{ _ccosts, &vsh::vsh_aligned_free });
 
                 auto _pcosts = vsh::vsh_aligned_malloc<float>(d->vi.width * d->tpitchVector * sizeof(float), d->alignment);
                 if (!_pcosts)
-                    throw std::string{ "malloc failure (pcosts)" };
+                    throw "malloc failure (pcosts)"s;
                 d->pcosts.emplace(threadID, aligned_float{ _pcosts, &vsh::vsh_aligned_free });
 
                 auto _pbackt = vsh::vsh_aligned_malloc<int>(d->vi.width * d->tpitchVector * sizeof(int), d->alignment);
                 if (!_pbackt)
-                    throw std::string{ "malloc failure (pbackt)" };
+                    throw "malloc failure (pbackt)"s;
                 d->pbackt.emplace(threadID, aligned_int{ _pbackt, &vsh::vsh_aligned_free });
 
                 auto _fpath = new (std::nothrow) int[d->vi.width];
                 if (!_fpath)
-                    throw std::string{ "malloc failure (fpath)" };
+                    throw "malloc failure (fpath)"s;
                 d->fpath.emplace(threadID, _fpath);
 
                 auto _dmap = new (std::nothrow) int[d->vi.width * d->vi.height];
                 if (!_dmap)
-                    throw std::string{ "malloc failure (dmap)" };
+                    throw "malloc failure (dmap)"s;
                 d->dmap.emplace(threadID, _dmap);
             }
 
