@@ -82,7 +82,6 @@ Ported from AviSynth plugin http://bengal.missouri.edu/~kes25c/ and http://ldeso
   * 1 = use c
   * 2 = use sse4.1
   * 3 = use avx2
-  * 4 = use avx512
 
 
 ## Compilation

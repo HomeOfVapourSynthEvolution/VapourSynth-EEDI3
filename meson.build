@@ -44,13 +44,6 @@ if host_machine.cpu_family().startswith('x86')
     dependencies: vapoursynth_dep,
     gnu_symbol_visibility: 'hidden',
   )
-
-  libs += static_library('avx512',
-    files('EEDI3/EEDI3_AVX512.cpp'),
-    cpp_args: gcc_syntax ? ['-mavx512f', '-mavx512vl', '-mavx512bw', '-mavx512dq', '-mfma'] : '/arch:AVX512',
-    dependencies: vapoursynth_dep,
-    gnu_symbol_visibility: 'hidden',
-  )
 endif
 
 shared_module('eedi3m',
