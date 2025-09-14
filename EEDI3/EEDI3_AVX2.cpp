@@ -50,7 +50,7 @@ static inline void calculateConnectionCosts(const vector_t* srcp, const bool* bm
                     const Vec8i ip = (Vec8i().load_a(src1p + x + u) + Vec8i().load_a(src1n + x - u) + 1) >> 1; // should use cubic if ucubic=true
                     const Vec8i v = abs(Vec8i().load_a(src1p + x) - ip) + abs(Vec8i().load_a(src1n + x) - ip);
                     const Vec8f result = mul_add(d->alpha, to_float(s0 + s1 + s2), mul_add(d->remainingWeight, to_float(v), d->beta * std::abs(u)));
-                    result.store_nt(ccosts + (d->tpitch * x + d->mdis + u) * d->vectorSize);
+                    result.store(ccosts + (d->tpitch * x + d->mdis + u) * d->vectorSize);
                 }
             }
         }
@@ -70,7 +70,7 @@ static inline void calculateConnectionCosts(const vector_t* srcp, const bool* bm
                     const Vec8i ip = (Vec8i().load_a(src1p + x + u) + Vec8i().load_a(src1n + x - u) + 1) >> 1; // should use cubic if ucubic=true
                     const Vec8i v = abs(Vec8i().load_a(src1p + x) - ip) + abs(Vec8i().load_a(src1n + x) - ip);
                     const Vec8f result = mul_add(d->alpha, to_float(s), mul_add(d->remainingWeight, to_float(v), d->beta * std::abs(u)));
-                    result.store_nt(ccosts + (d->tpitch * x + d->mdis + u) * d->vectorSize);
+                    result.store(ccosts + (d->tpitch * x + d->mdis + u) * d->vectorSize);
                 }
             }
         }
@@ -125,7 +125,7 @@ inline void calculateConnectionCosts(const float* srcp, const bool* bmask, float
                     const Vec8f ip = (Vec8f().load_a(src1p + x + u) + Vec8f().load_a(src1n + x - u)) * 0.5f; // should use cubic if ucubic=true
                     const Vec8f v = abs(Vec8f().load_a(src1p + x) - ip) + abs(Vec8f().load_a(src1n + x) - ip);
                     const Vec8f result = mul_add(d->alpha, s0 + s1 + s2, mul_add(d->remainingWeight, v, d->beta * std::abs(u)));
-                    result.store_nt(ccosts + (d->tpitch * x + d->mdis + u) * d->vectorSize);
+                    result.store(ccosts + (d->tpitch * x + d->mdis + u) * d->vectorSize);
                 }
             }
         }
@@ -145,7 +145,7 @@ inline void calculateConnectionCosts(const float* srcp, const bool* bmask, float
                     const Vec8f ip = (Vec8f().load_a(src1p + x + u) + Vec8f().load_a(src1n + x - u)) * 0.5f; // should use cubic if ucubic=true
                     const Vec8f v = abs(Vec8f().load_a(src1p + x) - ip) + abs(Vec8f().load_a(src1n + x) - ip);
                     const Vec8f result = mul_add(d->alpha, s, mul_add(d->remainingWeight, v, d->beta * std::abs(u)));
-                    result.store_nt(ccosts + (d->tpitch * x + d->mdis + u) * d->vectorSize);
+                    result.store(ccosts + (d->tpitch * x + d->mdis + u) * d->vectorSize);
                 }
             }
         }
@@ -154,8 +154,8 @@ inline void calculateConnectionCosts(const float* srcp, const bool* bmask, float
 
 template<typename pixel_t, typename vector_t>
 void filter_avx2(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, VSFrame* mcp, VSFrame** pad, VSFrame* dst, void* _srcVector, uint8_t* _mskVector,
-                 bool* VS_RESTRICT bmask, float* ccosts, float* pcosts, int* _pbackt, int* VS_RESTRICT fpath, int* _dmap, const int field_n,
-                 const EEDI3Data* VS_RESTRICT d, const VSAPI* vsapi) noexcept {
+                 bool* VS_RESTRICT bmask, int* _pbackt, int* VS_RESTRICT fpath, int* _dmap, const int field_n, const EEDI3Data* VS_RESTRICT d,
+                 const VSAPI* vsapi) noexcept {
     for (int plane = 0; plane < d->vi.format.numPlanes; plane++) {
         if (d->process[plane]) {
             const int srcWidth = vsapi->getFrameWidth(pad[plane], 0);
@@ -168,6 +168,11 @@ void filter_avx2(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, V
             auto _dstp = reinterpret_cast<pixel_t*>(vsapi->getWritePtr(dst, plane));
 
             auto srcVector = reinterpret_cast<vector_t*>(_srcVector);
+
+            auto _ccosts = std::make_unique<float[]>(dstWidth * d->tpitchVector);
+            auto _pcosts = std::make_unique<float[]>(dstWidth * d->tpitchVector);
+            auto ccosts = _ccosts.get();
+            auto pcosts = _pcosts.get();
 
             copyPad<pixel_t>(src, pad[plane], plane, d->dh, 1 - field_n, vsapi);
 
@@ -213,15 +218,12 @@ void filter_avx2(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, V
 
                     for (int x = dstWidth - minmdis; x < dstWidth; x++)
                         bmask[x] = (x <= last);
-
-                    memset(ccosts, 0, dstWidth * d->tpitchVector * sizeof(*ccosts));
-                    memset(pcosts, 0, dstWidth * d->tpitchVector * sizeof(*pcosts));
                 }
 
                 calculateConnectionCosts<vector_t>(srcVector, bmask, ccosts, dstWidth, srcWidth, d);
 
                 // calculate path costs
-                Vec8f().load_a(ccosts + d->mdisVector).store_a(pcosts + d->mdisVector);
+                Vec8f().load(ccosts + d->mdisVector).store(pcosts + d->mdisVector);
                 for (int x = 1; x < dstWidth; x++) {
                     auto tT = ccosts + d->tpitchVector * x;
                     auto ppT = pcosts + d->tpitchVector * (x - 1);
@@ -253,15 +255,15 @@ void filter_avx2(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, V
                             Vec8f bval = FLT_MAX;
 
                             for (int v = std::max(-umax2, u - 1); v <= std::min(umax2, u + 1); v++) {
-                                const Vec8f z = Vec8f().load_a(ppT + (d->mdis + v) * d->vectorSize) + d->gamma * std::abs(u - v);
+                                const Vec8f z = Vec8f().load(ppT + (d->mdis + v) * d->vectorSize) + d->gamma * std::abs(u - v);
                                 const Vec8f ccost = min(z, FLT_MAX * 0.9f);
                                 idx = select(Vec8ib(ccost < bval), v, idx);
                                 bval = min(ccost, bval);
                             }
 
                             const int mu = (d->mdis + u) * d->vectorSize;
-                            const Vec8f z = bval + Vec8f().load_a(tT + mu);
-                            min(z, FLT_MAX * 0.9f).store_a(pT + mu);
+                            const Vec8f z = bval + Vec8f().load(tT + mu);
+                            min(z, FLT_MAX * 0.9f).store(pT + mu);
                             idx.store_nt(piT + mu);
                         }
                     }
@@ -306,14 +308,14 @@ void filter_avx2(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, V
 }
 
 template void filter_avx2<uint8_t, int>(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, VSFrame* mcp, VSFrame** pad, VSFrame* dst,
-                                        void* _srcVector, uint8_t* _mskVector, bool* VS_RESTRICT bmask, float* ccosts, float* pcosts, int* _pbackt,
-                                        int* VS_RESTRICT fpath, int* _dmap, const int field_n, const EEDI3Data* VS_RESTRICT d, const VSAPI* vsapi) noexcept;
+                                        void* _srcVector, uint8_t* _mskVector, bool* VS_RESTRICT bmask, int* _pbackt, int* VS_RESTRICT fpath, int* _dmap,
+                                        const int field_n, const EEDI3Data* VS_RESTRICT d, const VSAPI* vsapi) noexcept;
 
 template void filter_avx2<uint16_t, int>(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, VSFrame* mcp, VSFrame** pad, VSFrame* dst,
-                                         void* _srcVector, uint8_t* _mskVector, bool* VS_RESTRICT bmask, float* ccosts, float* pcosts, int* _pbackt,
-                                         int* VS_RESTRICT fpath, int* _dmap, const int field_n, const EEDI3Data* VS_RESTRICT d, const VSAPI* vsapi) noexcept;
+                                         void* _srcVector, uint8_t* _mskVector, bool* VS_RESTRICT bmask, int* _pbackt, int* VS_RESTRICT fpath, int* _dmap,
+                                         const int field_n, const EEDI3Data* VS_RESTRICT d, const VSAPI* vsapi) noexcept;
 
 template void filter_avx2<float, float>(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, VSFrame* mcp, VSFrame** pad, VSFrame* dst,
-                                        void* _srcVector, uint8_t* _mskVector, bool* VS_RESTRICT bmask, float* ccosts, float* pcosts, int* _pbackt,
-                                        int* VS_RESTRICT fpath, int* _dmap, const int field_n, const EEDI3Data* VS_RESTRICT d, const VSAPI* vsapi) noexcept;
+                                        void* _srcVector, uint8_t* _mskVector, bool* VS_RESTRICT bmask, int* _pbackt, int* VS_RESTRICT fpath, int* _dmap,
+                                        const int field_n, const EEDI3Data* VS_RESTRICT d, const VSAPI* vsapi) noexcept;
 #endif

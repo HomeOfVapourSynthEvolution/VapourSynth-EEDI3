@@ -29,14 +29,14 @@ struct EEDI3Data final {
     float remainingWeight, rcpVthresh0, rcpVthresh1, rcpVthresh2;
     int vectorSize, alignment, tpitch, tpitchVector, mdisVector, peak;
     std::mutex mutex;
-    std::unordered_map<std::thread::id, aligned_float> srcVector, ccosts, pcosts;
+    std::unordered_map<std::thread::id, aligned_float> srcVector;
     std::unordered_map<std::thread::id, aligned_int> pbackt;
     std::unordered_map<std::thread::id, std::unique_ptr<bool[]>> bmask;
     std::unordered_map<std::thread::id, std::unique_ptr<int[]>> fpath, dmap;
     std::unordered_map<std::thread::id, std::unique_ptr<uint8_t[]>> mskVector;
     void (*filter)(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, VSFrame* mcp, VSFrame** pad, VSFrame* dst, void* srcVector, uint8_t* mskVector,
-                   bool* VS_RESTRICT bmask, float* ccosts, float* pcosts, int* pbackt, int* VS_RESTRICT fpath, int* dmap, const int field_n,
-                   const EEDI3Data* VS_RESTRICT d, const VSAPI* vsapi) noexcept;
+                   bool* VS_RESTRICT bmask, int* pbackt, int* VS_RESTRICT fpath, int* dmap, const int field_n, const EEDI3Data* VS_RESTRICT d,
+                   const VSAPI* vsapi) noexcept;
 };
 
 static void copyMask(const VSFrame* src, VSFrame* dst, const int plane, const bool dh, const int field_n, const VSAPI* vsapi) noexcept {

@@ -33,13 +33,13 @@ using namespace std::literals;
 #ifdef EEDI3_X86
 template<typename pixel_t, typename vector_t>
 extern void filter_sse4(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, VSFrame* mcp, VSFrame** pad, VSFrame* dst, void* srcVector,
-                        uint8_t* mskVector, bool* VS_RESTRICT bmask, float* ccosts, float* pcosts, int* pbackt, int* VS_RESTRICT fpath, int* dmap,
-                        const int field_n, const EEDI3Data* VS_RESTRICT d, const VSAPI* vsapi) noexcept;
+                        uint8_t* mskVector, bool* VS_RESTRICT bmask, int* pbackt, int* VS_RESTRICT fpath, int* dmap, const int field_n,
+                        const EEDI3Data* VS_RESTRICT d, const VSAPI* vsapi) noexcept;
 
 template<typename pixel_t, typename vector_t>
 extern void filter_avx2(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, VSFrame* mcp, VSFrame** pad, VSFrame* dst, void* srcVector,
-                        uint8_t* mskVector, bool* VS_RESTRICT bmask, float* ccosts, float* pcosts, int* pbackt, int* VS_RESTRICT fpath, int* dmap,
-                        const int field_n, const EEDI3Data* VS_RESTRICT d, const VSAPI* vsapi) noexcept;
+                        uint8_t* mskVector, bool* VS_RESTRICT bmask, int* pbackt, int* VS_RESTRICT fpath, int* dmap, const int field_n,
+                        const EEDI3Data* VS_RESTRICT d, const VSAPI* vsapi) noexcept;
 #endif
 
 template<typename pixel_t>
@@ -176,8 +176,8 @@ inline void calculateConnectionCosts(const float* src3p, const float* src1p, con
 
 template<typename pixel_t>
 static void filter_c(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, VSFrame* mcp, VSFrame** pad, VSFrame* dst, [[maybe_unused]] void* srcVector,
-                     [[maybe_unused]] uint8_t* mskVector, bool* VS_RESTRICT bmask, float* ccosts, float* pcosts, int* pbackt, int* VS_RESTRICT fpath,
-                     int* _dmap, const int field_n, const EEDI3Data* VS_RESTRICT d, const VSAPI* vsapi) noexcept {
+                     [[maybe_unused]] uint8_t* mskVector, bool* VS_RESTRICT bmask, int* pbackt, int* VS_RESTRICT fpath, int* _dmap, const int field_n,
+                     const EEDI3Data* VS_RESTRICT d, const VSAPI* vsapi) noexcept {
     for (int plane = 0; plane < d->vi.format.numPlanes; plane++) {
         if (d->process[plane]) {
             [[maybe_unused]] const int srcWidth = vsapi->getFrameWidth(pad[plane], 0);
@@ -188,6 +188,11 @@ static void filter_c(const VSFrame* src, const VSFrame* scp, const VSFrame* mcli
             const ptrdiff_t dstStride = vsapi->getStride(dst, plane) / sizeof(pixel_t);
             auto _srcp = reinterpret_cast<const pixel_t*>(vsapi->getReadPtr(pad[plane], 0));
             auto _dstp = reinterpret_cast<pixel_t*>(vsapi->getWritePtr(dst, plane));
+
+            auto _ccosts = std::make_unique<float[]>(dstWidth * d->tpitch);
+            auto _pcosts = std::make_unique<float[]>(dstWidth * d->tpitch);
+            auto ccosts = _ccosts.get();
+            auto pcosts = _pcosts.get();
 
             copyPad<pixel_t>(src, pad[plane], plane, d->dh, 1 - field_n, vsapi);
 
@@ -236,9 +241,6 @@ static void filter_c(const VSFrame* src, const VSFrame* scp, const VSFrame* mcli
 
                     for (int x = dstWidth - minmdis; x < dstWidth; x++)
                         bmask[x] = (x <= last);
-
-                    memset(ccosts, 0, dstWidth * d->tpitch * sizeof(*ccosts));
-                    memset(pcosts, 0, dstWidth * d->tpitch * sizeof(*pcosts));
                 }
 
                 calculateConnectionCosts<pixel_t>(src3p, src1p, src1n, src3n, bmask, ccosts, dstWidth, d);
@@ -326,8 +328,6 @@ static const VSFrame* VS_CC eedi3GetFrame(int n, int activationReason, void* ins
         float* srcVector;
         uint8_t* mskVector;
         bool* bmask;
-        float* ccosts;
-        float* pcosts;
         int* pbackt;
         int* fpath;
         int* dmap;
@@ -365,16 +365,6 @@ static const VSFrame* VS_CC eedi3GetFrame(int n, int activationReason, void* ins
                     d->bmask.emplace(threadID, nullptr);
                 }
 
-                auto _ccosts = vsh::vsh_aligned_malloc<float>(d->vi.width * d->tpitchVector * sizeof(float), d->alignment);
-                if (!_ccosts)
-                    throw "malloc failure (ccosts)"s;
-                d->ccosts.emplace(threadID, aligned_float{ _ccosts, &vsh::vsh_aligned_free });
-
-                auto _pcosts = vsh::vsh_aligned_malloc<float>(d->vi.width * d->tpitchVector * sizeof(float), d->alignment);
-                if (!_pcosts)
-                    throw "malloc failure (pcosts)"s;
-                d->pcosts.emplace(threadID, aligned_float{ _pcosts, &vsh::vsh_aligned_free });
-
                 auto _pbackt = vsh::vsh_aligned_malloc<int>(d->vi.width * d->tpitchVector * sizeof(int), d->alignment);
                 if (!_pbackt)
                     throw "malloc failure (pbackt)"s;
@@ -394,8 +384,6 @@ static const VSFrame* VS_CC eedi3GetFrame(int n, int activationReason, void* ins
             srcVector = d->srcVector.at(threadID).get();
             mskVector = d->mskVector.at(threadID).get();
             bmask = d->bmask.at(threadID).get();
-            ccosts = d->ccosts.at(threadID).get();
-            pcosts = d->pcosts.at(threadID).get();
             pbackt = d->pbackt.at(threadID).get();
             fpath = d->fpath.at(threadID).get();
             dmap = d->dmap.at(threadID).get();
@@ -445,7 +433,7 @@ static const VSFrame* VS_CC eedi3GetFrame(int n, int activationReason, void* ins
             field_n = field;
         }
 
-        d->filter(src, scp, mclip, mcp, pad, dst, srcVector, mskVector, bmask, ccosts, pcosts, pbackt, fpath, dmap, field_n, d, vsapi);
+        d->filter(src, scp, mclip, mcp, pad, dst, srcVector, mskVector, bmask, pbackt, fpath, dmap, field_n, d, vsapi);
 
         VSMap* props = vsapi->getFramePropertiesRW(dst);
         vsapi->mapSetInt(props, "_FieldBased", 0, maReplace);
@@ -743,8 +731,6 @@ static void VS_CC eedi3Create(const VSMap* in, VSMap* out, [[maybe_unused]] void
         d->srcVector.reserve(info.numThreads);
         d->mskVector.reserve(info.numThreads);
         d->bmask.reserve(info.numThreads);
-        d->ccosts.reserve(info.numThreads);
-        d->pcosts.reserve(info.numThreads);
         d->pbackt.reserve(info.numThreads);
         d->fpath.reserve(info.numThreads);
         d->dmap.reserve(info.numThreads);
