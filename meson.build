@@ -35,14 +35,14 @@ if host_machine.cpu_family().startswith('x86')
 
   libs += static_library('sse4',
     files('EEDI3/EEDI3_SSE4.cpp'),
-    cpp_args: gcc_syntax ? ['-msse4.1'] : '/arch:SSE2',
+    cpp_args: gcc_syntax ? '-march=x86-64-v2' : '/arch:SSE2',
     dependencies: vapoursynth_dep,
     gnu_symbol_visibility: 'hidden',
   )
 
   libs += static_library('avx2',
     files('EEDI3/EEDI3_AVX2.cpp'),
-    cpp_args: gcc_syntax ? ['-mavx2', '-mfma'] : '/arch:AVX2',
+    cpp_args: gcc_syntax ? '-march=x86-64-v3' : '/arch:AVX2',
     dependencies: vapoursynth_dep,
     gnu_symbol_visibility: 'hidden',
   )
@@ -51,8 +51,8 @@ endif
 shared_module('eedi3m',
   sources,
   dependencies: vapoursynth_dep,
-  link_with: libs,
+  gnu_symbol_visibility: 'hidden',
   install: true,
   install_dir: install_dir,
-  gnu_symbol_visibility: 'hidden',
+  link_with: libs,
 )
