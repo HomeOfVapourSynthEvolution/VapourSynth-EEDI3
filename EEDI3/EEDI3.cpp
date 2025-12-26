@@ -312,14 +312,12 @@ static void filter_c(const VSFrame* src, const VSFrame* scp, const VSFrame* mcli
                     } else {
                         const int umax = std::min({ x, dstWidth - 1 - x, mdis });
                         const int umax2 = std::min({ x - 1, dstWidth - x, mdis });
-                        const int vmin_base = std::max(-umax2, -1);
-                        const int vmax_base = std::min(umax2, 1);
                         
                         for (int u = -umax; u <= umax; u++) {
                             int idx = 0;
                             float bval = FLT_MAX;
-                            const int vmin = std::max(vmin_base, u - 1);
-                            const int vmax = std::min(vmax_base, u + 1);
+                            const int vmin = std::max(-umax2, u - 1);
+                            const int vmax = std::min(umax2, u + 1);
 
                             for (int v = vmin; v <= vmax; v++) {
                                 const int abs_diff = std::abs(u - v);
