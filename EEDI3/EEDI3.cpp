@@ -30,6 +30,9 @@
 
 using namespace std::literals;
 
+// Saturation threshold to prevent float overflow in path cost calculations
+constexpr float MAX_COST_FACTOR = 0.9f;
+
 #ifdef EEDI3_X86
 template<typename pixel_t, typename vector_t>
 extern void filter_sse4(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, VSFrame* mcp, VSFrame** pad, VSFrame* dst, void* srcVector,
@@ -327,7 +330,7 @@ static void filter_c(const VSFrame* src, const VSFrame* scp, const VSFrame* mcli
                                 }
                             }
 
-                            pT[mdis + u] = std::min(bval + tT[mdis + u], FLT_MAX * 0.9f);
+                            pT[mdis + u] = std::min(bval + tT[mdis + u], FLT_MAX * MAX_COST_FACTOR);
                             piT[mdis + u] = idx;
                         }
                     }

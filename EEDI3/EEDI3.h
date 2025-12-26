@@ -34,9 +34,6 @@ struct EEDI3Data final {
     std::unordered_map<std::thread::id, std::unique_ptr<bool[]>> bmask;
     std::unordered_map<std::thread::id, std::unique_ptr<int[]>> fpath, dmap;
     std::unordered_map<std::thread::id, std::unique_ptr<uint8_t[]>> mskVector;
-    std::unordered_map<std::thread::id, aligned_float> ccosts;
-    std::unordered_map<std::thread::id, aligned_float> pcosts;
-    std::unordered_map<std::thread::id, std::unique_ptr<uint8_t[]>> tline;
     void (*filter)(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, VSFrame* mcp, VSFrame** pad, VSFrame* dst, void* srcVector, uint8_t* mskVector,
                    bool* VS_RESTRICT bmask, int* pbackt, int* VS_RESTRICT fpath, int* dmap, const int field_n, const EEDI3Data* VS_RESTRICT d,
                    const VSAPI* vsapi) noexcept;
