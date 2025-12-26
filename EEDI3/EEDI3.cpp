@@ -43,65 +43,81 @@ extern void filter_avx2(const VSFrame* src, const VSFrame* scp, const VSFrame* m
 #endif
 
 template<typename pixel_t>
-static inline void calculateConnectionCosts(const pixel_t* src3p, const pixel_t* src1p, const pixel_t* src1n, const pixel_t* src3n, const bool* bmask,
+static inline void calculateConnectionCosts(const pixel_t* VS_RESTRICT src3p, const pixel_t* VS_RESTRICT src1p, 
+                                            const pixel_t* VS_RESTRICT src1n, const pixel_t* VS_RESTRICT src3n, const bool* bmask,
                                             float* VS_RESTRICT ccosts, const int width, const EEDI3Data* VS_RESTRICT d) noexcept {
+    const int nrad = d->nrad;
+    const int mdis = d->mdis;
+    const int tpitch = d->tpitch;
+    const float alpha = d->alpha;
+    const float beta = d->beta;
+    const float remainingWeight = d->remainingWeight;
+    
     if (d->cost3) {
         for (int x = 0; x < width; x++) {
             if (!bmask || bmask[x]) {
-                const int umax = std::min({ x, width - 1 - x, d->mdis });
+                const int umax = std::min({ x, width - 1 - x, mdis });
+                float* VS_RESTRICT ccosts_x = ccosts + tpitch * x + mdis;
+                
                 for (int u = -umax; u <= umax; u++) {
-                    const int u2 = u * 2;
+                    const int u2 = u << 1; // u * 2
+                    const int abs_u = std::abs(u);
                     int s0 = 0, s1 = -1, s2 = -1;
 
-                    for (int k = -(d->nrad); k <= d->nrad; k++) {
+                    for (int k = -nrad; k <= nrad; k++) {
                         s0 += std::abs(src3p[x + u + k] - src1p[x - u + k]) +
                             std::abs(src1p[x + u + k] - src1n[x - u + k]) +
                             std::abs(src1n[x + u + k] - src3n[x - u + k]);
                     }
 
-                    if ((u >= 0 && x >= u2) || (u <= 0 && x < width + u2)) {
+                    const bool s1Flag = (u >= 0 && x >= u2) || (u <= 0 && x < width + u2);
+                    if (s1Flag) {
                         s1 = 0;
-                        for (int k = -(d->nrad); k <= d->nrad; k++) {
+                        for (int k = -nrad; k <= nrad; k++) {
                             s1 += std::abs(src3p[x + k] - src1p[x - u2 + k]) +
                                 std::abs(src1p[x + k] - src1n[x - u2 + k]) +
                                 std::abs(src1n[x + k] - src3n[x - u2 + k]);
                         }
                     }
 
-                    if ((u <= 0 && x >= -u2) || (u >= 0 && x < width + u2)) {
+                    const bool s2Flag = (u <= 0 && x >= -u2) || (u >= 0 && x < width + u2);
+                    if (s2Flag) {
                         s2 = 0;
-                        for (int k = -(d->nrad); k <= d->nrad; k++) {
+                        for (int k = -nrad; k <= nrad; k++) {
                             s2 += std::abs(src3p[x + u2 + k] - src1p[x + k]) +
                                 std::abs(src1p[x + u2 + k] - src1n[x + k]) +
                                 std::abs(src1n[x + u2 + k] - src3n[x + k]);
                         }
                     }
 
-                    s1 = (s1 >= 0) ? s1 : (s2 >= 0 ? s2 : s0);
-                    s2 = (s2 >= 0) ? s2 : (s1 >= 0 ? s1 : s0);
+                    s1 = s1Flag ? s1 : (s2Flag ? s2 : s0);
+                    s2 = s2Flag ? s2 : (s1Flag ? s1 : s0);
 
-                    const int ip = (src1p[x + u] + src1n[x - u] + 1) / 2; // should use cubic if ucubic=true
+                    const int ip = (src1p[x + u] + src1n[x - u] + 1) >> 1; // should use cubic if ucubic=true
                     const int v = std::abs(src1p[x] - ip) + std::abs(src1n[x] - ip);
-                    ccosts[d->tpitch * x + d->mdis + u] = d->alpha * (s0 + s1 + s2) + d->beta * std::abs(u) + d->remainingWeight * v;
+                    ccosts_x[u] = alpha * (s0 + s1 + s2) + beta * abs_u + remainingWeight * v;
                 }
             }
         }
     } else {
         for (int x = 0; x < width; x++) {
             if (!bmask || bmask[x]) {
-                const int umax = std::min({ x, width - 1 - x, d->mdis });
+                const int umax = std::min({ x, width - 1 - x, mdis });
+                float* VS_RESTRICT ccosts_x = ccosts + tpitch * x + mdis;
+                
                 for (int u = -umax; u <= umax; u++) {
+                    const int abs_u = std::abs(u);
                     int s = 0;
 
-                    for (int k = -(d->nrad); k <= d->nrad; k++) {
+                    for (int k = -nrad; k <= nrad; k++) {
                         s += std::abs(src3p[x + u + k] - src1p[x - u + k]) +
                             std::abs(src1p[x + u + k] - src1n[x - u + k]) +
                             std::abs(src1n[x + u + k] - src3n[x - u + k]);
                     }
 
-                    const int ip = (src1p[x + u] + src1n[x - u] + 1) / 2; // should use cubic if ucubic=true
+                    const int ip = (src1p[x + u] + src1n[x - u] + 1) >> 1; // should use cubic if ucubic=true
                     const int v = std::abs(src1p[x] - ip) + std::abs(src1n[x] - ip);
-                    ccosts[d->tpitch * x + d->mdis + u] = d->alpha * s + d->beta * std::abs(u) + d->remainingWeight * v;
+                    ccosts_x[u] = alpha * s + beta * abs_u + remainingWeight * v;
                 }
             }
         }
@@ -109,65 +125,81 @@ static inline void calculateConnectionCosts(const pixel_t* src3p, const pixel_t*
 }
 
 template<>
-inline void calculateConnectionCosts(const float* src3p, const float* src1p, const float* src1n, const float* src3n, const bool* bmask,
+inline void calculateConnectionCosts(const float* VS_RESTRICT src3p, const float* VS_RESTRICT src1p, 
+                                     const float* VS_RESTRICT src1n, const float* VS_RESTRICT src3n, const bool* bmask,
                                      float* VS_RESTRICT ccosts, const int width, const EEDI3Data* VS_RESTRICT d) noexcept {
+    const int nrad = d->nrad;
+    const int mdis = d->mdis;
+    const int tpitch = d->tpitch;
+    const float alpha = d->alpha;
+    const float beta = d->beta;
+    const float remainingWeight = d->remainingWeight;
+    
     if (d->cost3) {
         for (int x = 0; x < width; x++) {
             if (!bmask || bmask[x]) {
-                const int umax = std::min({ x, width - 1 - x, d->mdis });
+                const int umax = std::min({ x, width - 1 - x, mdis });
+                float* VS_RESTRICT ccosts_x = ccosts + tpitch * x + mdis;
+                
                 for (int u = -umax; u <= umax; u++) {
-                    const int u2 = u * 2;
+                    const int u2 = u << 1; // u * 2
+                    const int abs_u = std::abs(u);
                     float s0 = 0.0f, s1 = -FLT_MAX, s2 = -FLT_MAX;
 
-                    for (int k = -(d->nrad); k <= d->nrad; k++) {
+                    for (int k = -nrad; k <= nrad; k++) {
                         s0 += std::abs(src3p[x + u + k] - src1p[x - u + k]) +
                             std::abs(src1p[x + u + k] - src1n[x - u + k]) +
                             std::abs(src1n[x + u + k] - src3n[x - u + k]);
                     }
 
-                    if ((u >= 0 && x >= u2) || (u <= 0 && x < width + u2)) {
+                    const bool s1Flag = (u >= 0 && x >= u2) || (u <= 0 && x < width + u2);
+                    if (s1Flag) {
                         s1 = 0.0f;
-                        for (int k = -(d->nrad); k <= d->nrad; k++) {
+                        for (int k = -nrad; k <= nrad; k++) {
                             s1 += std::abs(src3p[x + k] - src1p[x - u2 + k]) +
                                 std::abs(src1p[x + k] - src1n[x - u2 + k]) +
                                 std::abs(src1n[x + k] - src3n[x - u2 + k]);
                         }
                     }
 
-                    if ((u <= 0 && x >= -u2) || (u >= 0 && x < width + u2)) {
+                    const bool s2Flag = (u <= 0 && x >= -u2) || (u >= 0 && x < width + u2);
+                    if (s2Flag) {
                         s2 = 0.0f;
-                        for (int k = -(d->nrad); k <= d->nrad; k++) {
+                        for (int k = -nrad; k <= nrad; k++) {
                             s2 += std::abs(src3p[x + u2 + k] - src1p[x + k]) +
                                 std::abs(src1p[x + u2 + k] - src1n[x + k]) +
                                 std::abs(src1n[x + u2 + k] - src3n[x + k]);
                         }
                     }
 
-                    s1 = (s1 > -FLT_MAX) ? s1 : (s2 > -FLT_MAX ? s2 : s0);
-                    s2 = (s2 > -FLT_MAX) ? s2 : (s1 > -FLT_MAX ? s1 : s0);
+                    s1 = s1Flag ? s1 : (s2Flag ? s2 : s0);
+                    s2 = s2Flag ? s2 : (s1Flag ? s1 : s0);
 
-                    const float ip = (src1p[x + u] + src1n[x - u]) / 2.0f; // should use cubic if ucubic=true
+                    const float ip = (src1p[x + u] + src1n[x - u]) * 0.5f; // should use cubic if ucubic=true
                     const float v = std::abs(src1p[x] - ip) + std::abs(src1n[x] - ip);
-                    ccosts[d->tpitch * x + d->mdis + u] = d->alpha * (s0 + s1 + s2) + d->beta * std::abs(u) + d->remainingWeight * v;
+                    ccosts_x[u] = alpha * (s0 + s1 + s2) + beta * abs_u + remainingWeight * v;
                 }
             }
         }
     } else {
         for (int x = 0; x < width; x++) {
             if (!bmask || bmask[x]) {
-                const int umax = std::min({ x, width - 1 - x, d->mdis });
+                const int umax = std::min({ x, width - 1 - x, mdis });
+                float* VS_RESTRICT ccosts_x = ccosts + tpitch * x + mdis;
+                
                 for (int u = -umax; u <= umax; u++) {
+                    const int abs_u = std::abs(u);
                     float s = 0.0f;
 
-                    for (int k = -(d->nrad); k <= d->nrad; k++) {
+                    for (int k = -nrad; k <= nrad; k++) {
                         s += std::abs(src3p[x + u + k] - src1p[x - u + k]) +
                             std::abs(src1p[x + u + k] - src1n[x - u + k]) +
                             std::abs(src1n[x + u + k] - src3n[x - u + k]);
                     }
 
-                    const float ip = (src1p[x + u] + src1n[x - u]) / 2.0f; // should use cubic if ucubic=true
+                    const float ip = (src1p[x + u] + src1n[x - u]) * 0.5f; // should use cubic if ucubic=true
                     const float v = std::abs(src1p[x] - ip) + std::abs(src1n[x] - ip);
-                    ccosts[d->tpitch * x + d->mdis + u] = d->alpha * s + d->beta * std::abs(u) + d->remainingWeight * v;
+                    ccosts_x[u] = alpha * s + beta * abs_u + remainingWeight * v;
                 }
             }
         }
@@ -246,49 +278,57 @@ static void filter_c(const VSFrame* src, const VSFrame* scp, const VSFrame* mcli
                 calculateConnectionCosts<pixel_t>(src3p, src1p, src1n, src3n, bmask, ccosts, dstWidth, d);
 
                 // calculate path costs
-                pcosts[d->mdis] = ccosts[d->mdis];
+                const int mdis = d->mdis;
+                const int tpitch = d->tpitch;
+                const float gamma = d->gamma;
+                
+                pcosts[mdis] = ccosts[mdis];
                 for (int x = 1; x < dstWidth; x++) {
-                    auto tT = ccosts + d->tpitch * x;
-                    auto ppT = pcosts + d->tpitch * (x - 1);
-                    auto pT = pcosts + d->tpitch * x;
-                    auto piT = pbackt + d->tpitch * (x - 1);
+                    const float* VS_RESTRICT tT = ccosts + tpitch * x;
+                    const float* VS_RESTRICT ppT = pcosts + tpitch * (x - 1);
+                    float* VS_RESTRICT pT = pcosts + tpitch * x;
+                    int* VS_RESTRICT piT = pbackt + tpitch * (x - 1);
 
                     if (bmask && !bmask[x]) {
                         if (x == 1) {
-                            const int umax = std::min({ x, dstWidth - 1 - x, d->mdis });
+                            const int umax = std::min({ x, dstWidth - 1 - x, mdis });
                             for (int u = -umax; u <= umax; u++)
-                                pT[d->mdis + u] = tT[d->mdis + u];
+                                pT[mdis + u] = tT[mdis + u];
 
-                            memset(piT, 0, d->tpitch * sizeof(*piT));
+                            memset(piT, 0, tpitch * sizeof(*piT));
                         } else {
-                            memcpy(pT, ppT, d->tpitch * sizeof(*ppT));
-                            memcpy(piT, piT - d->tpitch, d->tpitch * sizeof(*piT));
+                            memcpy(pT, ppT, tpitch * sizeof(*ppT));
+                            memcpy(piT, piT - tpitch, tpitch * sizeof(*piT));
 
                             const int pumax = std::min(x - 1, dstWidth - x);
-                            if (pumax < d->mdis) {
-                                piT[d->mdis - pumax] = 1 - pumax;
-                                piT[d->mdis + pumax] = pumax - 1;
+                            if (pumax < mdis) {
+                                piT[mdis - pumax] = 1 - pumax;
+                                piT[mdis + pumax] = pumax - 1;
                             }
                         }
                     } else {
-                        const int umax = std::min({ x, dstWidth - 1 - x, d->mdis });
-                        const int umax2 = std::min({ x - 1, dstWidth - x, d->mdis });
+                        const int umax = std::min({ x, dstWidth - 1 - x, mdis });
+                        const int umax2 = std::min({ x - 1, dstWidth - x, mdis });
+                        const int vmin_base = std::max(-umax2, -1);
+                        const int vmax_base = std::min(umax2, 1);
+                        
                         for (int u = -umax; u <= umax; u++) {
                             int idx = 0;
                             float bval = FLT_MAX;
+                            const int vmin = std::max(vmin_base, u - 1);
+                            const int vmax = std::min(vmax_base, u + 1);
 
-                            for (int v = std::max(-umax2, u - 1); v <= std::min(umax2, u + 1); v++) {
-                                const double z = ppT[d->mdis + v] + d->gamma * std::abs(u - v);
-                                const float ccost = static_cast<float>(std::min(z, FLT_MAX * 0.9));
-                                if (ccost < bval) {
-                                    bval = ccost;
+                            for (int v = vmin; v <= vmax; v++) {
+                                const int abs_diff = std::abs(u - v);
+                                const float z = ppT[mdis + v] + gamma * abs_diff;
+                                if (z < bval) {
+                                    bval = z;
                                     idx = v;
                                 }
                             }
 
-                            const double z = bval + tT[d->mdis + u];
-                            pT[d->mdis + u] = static_cast<float>(std::min(z, FLT_MAX * 0.9));
-                            piT[d->mdis + u] = idx;
+                            pT[mdis + u] = std::min(bval + tT[mdis + u], FLT_MAX * 0.9f);
+                            piT[mdis + u] = idx;
                         }
                     }
                 }

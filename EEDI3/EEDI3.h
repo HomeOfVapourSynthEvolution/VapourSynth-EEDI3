@@ -34,6 +34,9 @@ struct EEDI3Data final {
     std::unordered_map<std::thread::id, std::unique_ptr<bool[]>> bmask;
     std::unordered_map<std::thread::id, std::unique_ptr<int[]>> fpath, dmap;
     std::unordered_map<std::thread::id, std::unique_ptr<uint8_t[]>> mskVector;
+    std::unordered_map<std::thread::id, aligned_float> ccosts;
+    std::unordered_map<std::thread::id, aligned_float> pcosts;
+    std::unordered_map<std::thread::id, std::unique_ptr<uint8_t[]>> tline;
     void (*filter)(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, VSFrame* mcp, VSFrame** pad, VSFrame* dst, void* srcVector, uint8_t* mskVector,
                    bool* VS_RESTRICT bmask, int* pbackt, int* VS_RESTRICT fpath, int* dmap, const int field_n, const EEDI3Data* VS_RESTRICT d,
                    const VSAPI* vsapi) noexcept;
@@ -59,9 +62,10 @@ static void copyPad(const VSFrame* src, VSFrame* dst, const int plane, const boo
     const int dstHeight = vsapi->getFrameHeight(dst, 0);
     const ptrdiff_t srcStride = vsapi->getStride(src, plane) / sizeof(pixel_t);
     const ptrdiff_t dstStride = vsapi->getStride(dst, 0) / sizeof(pixel_t);
-    const pixel_t* srcp = reinterpret_cast<const pixel_t*>(vsapi->getReadPtr(src, plane));
+    const pixel_t* VS_RESTRICT srcp = reinterpret_cast<const pixel_t*>(vsapi->getReadPtr(src, plane));
     pixel_t* VS_RESTRICT dstp = reinterpret_cast<pixel_t*>(vsapi->getWritePtr(dst, 0));
 
+    // Copy main content with margin offset
     if (!dh)
         vsh::bitblt(dstp + dstStride * (MARGIN_V + off) + MARGIN_H,
                     vsapi->getStride(dst, 0) * 2,
@@ -77,56 +81,67 @@ static void copyPad(const VSFrame* src, VSFrame* dst, const int plane, const boo
                     srcWidth * sizeof(pixel_t),
                     srcHeight);
 
-    dstp += dstStride * (MARGIN_V + off);
-
-    for (int y = MARGIN_V + off; y < dstHeight - MARGIN_V; y += 2) {
+    // Fill horizontal margins with mirrored content
+    pixel_t* VS_RESTRICT row_ptr = dstp + dstStride * (MARGIN_V + off);
+    const int margin_end = dstHeight - MARGIN_V;
+    
+    for (int y = MARGIN_V + off; y < margin_end; y += 2) {
+        // Left margin - mirror from content
         for (int x = 0; x < MARGIN_H; x++)
-            dstp[x] = dstp[MARGIN_H * 2 - x];
+            row_ptr[x] = row_ptr[MARGIN_H * 2 - x];
 
-        for (int x = dstWidth - MARGIN_H, c = 2; x < dstWidth; x++, c += 2)
-            dstp[x] = dstp[x - c];
+        // Right margin - mirror from content
+        const int right_start = dstWidth - MARGIN_H;
+        for (int x = 0; x < MARGIN_H; x++)
+            row_ptr[right_start + x] = row_ptr[right_start - 2 - x * 2];
 
-        dstp += dstStride * 2;
+        row_ptr += dstStride * 2;
     }
 
-    dstp = reinterpret_cast<pixel_t*>(vsapi->getWritePtr(dst, 0));
-
+    // Fill vertical margins
     for (int y = off; y < MARGIN_V; y += 2)
         memcpy(dstp + dstStride * y, dstp + dstStride * (MARGIN_V * 2 - y), dstWidth * sizeof(pixel_t));
 
-    for (int y = dstHeight - MARGIN_V + off, c = 2 + 2 * off; y < dstHeight; y += 2, c += 4)
+    for (int y = margin_end + off, c = 2 + 2 * off; y < dstHeight; y += 2, c += 4)
         memcpy(dstp + dstStride * y, dstp + dstStride * (y - c), dstWidth * sizeof(pixel_t));
 }
 
 template<typename pixel_t>
-static inline void interpolate(const pixel_t* src3p, const pixel_t* src1p, const pixel_t* src1n, const pixel_t* src3n, pixel_t* VS_RESTRICT dstp,
-                               const bool* bmask, const int* fpath, int* VS_RESTRICT dmap, const int width, const bool ucubic, const int peak) noexcept {
+static inline void interpolate(const pixel_t* VS_RESTRICT src3p, const pixel_t* VS_RESTRICT src1p, 
+                               const pixel_t* VS_RESTRICT src1n, const pixel_t* VS_RESTRICT src3n, 
+                               pixel_t* VS_RESTRICT dstp, const bool* bmask, const int* VS_RESTRICT fpath, 
+                               int* VS_RESTRICT dmap, const int width, const bool ucubic, const int peak) noexcept {
     for (int x = 0; x < width; x++) {
         if (bmask && !bmask[x]) {
             dmap[x] = 0;
 
             if (ucubic)
-                dstp[x] = std::clamp((9 * (src1p[x] + src1n[x]) - (src3p[x] + src3n[x]) + 8) / 16, 0, peak);
+                dstp[x] = std::clamp((9 * (src1p[x] + src1n[x]) - (src3p[x] + src3n[x]) + 8) >> 4, 0, peak);
             else
-                dstp[x] = (src1p[x] + src1n[x] + 1) / 2;
+                dstp[x] = (src1p[x] + src1n[x] + 1) >> 1;
         } else {
             const int dir = fpath[x];
-            const int dir3 = dir * 3;
-            const int absDir3 = std::abs(dir3);
-
             dmap[x] = dir;
 
-            if (ucubic && x >= absDir3 && x <= width - 1 - absDir3)
-                dstp[x] = std::clamp((9 * (src1p[x + dir] + src1n[x - dir]) - (src3p[x + dir3] + src3n[x - dir3]) + 8) / 16, 0, peak);
-            else
-                dstp[x] = (src1p[x + dir] + src1n[x - dir] + 1) / 2;
+            if (ucubic) {
+                const int dir3 = dir * 3;
+                const int absDir3 = std::abs(dir3);
+                if (x >= absDir3 && x <= width - 1 - absDir3)
+                    dstp[x] = std::clamp((9 * (src1p[x + dir] + src1n[x - dir]) - (src3p[x + dir3] + src3n[x - dir3]) + 8) >> 4, 0, peak);
+                else
+                    dstp[x] = (src1p[x + dir] + src1n[x - dir] + 1) >> 1;
+            } else {
+                dstp[x] = (src1p[x + dir] + src1n[x - dir] + 1) >> 1;
+            }
         }
     }
 }
 
 template<>
-inline void interpolate(const float* src3p, const float* src1p, const float* src1n, const float* src3n, float* VS_RESTRICT dstp, const bool* bmask,
-                        const int* fpath, int* VS_RESTRICT dmap, const int width, const bool ucubic, [[maybe_unused]] const int peak) noexcept {
+inline void interpolate(const float* VS_RESTRICT src3p, const float* VS_RESTRICT src1p, 
+                        const float* VS_RESTRICT src1n, const float* VS_RESTRICT src3n, 
+                        float* VS_RESTRICT dstp, const bool* bmask, const int* VS_RESTRICT fpath, 
+                        int* VS_RESTRICT dmap, const int width, const bool ucubic, [[maybe_unused]] const int peak) noexcept {
     for (int x = 0; x < width; x++) {
         if (bmask && !bmask[x]) {
             dmap[x] = 0;
@@ -134,18 +149,21 @@ inline void interpolate(const float* src3p, const float* src1p, const float* src
             if (ucubic)
                 dstp[x] = 0.5625f * (src1p[x] + src1n[x]) - 0.0625f * (src3p[x] + src3n[x]);
             else
-                dstp[x] = (src1p[x] + src1n[x]) / 2.0f;
+                dstp[x] = (src1p[x] + src1n[x]) * 0.5f;
         } else {
             const int dir = fpath[x];
-            const int dir3 = dir * 3;
-            const int absDir3 = std::abs(dir3);
-
             dmap[x] = dir;
 
-            if (ucubic && x >= absDir3 && x <= width - 1 - absDir3)
-                dstp[x] = 0.5625f * (src1p[x + dir] + src1n[x - dir]) - 0.0625f * (src3p[x + dir3] + src3n[x - dir3]);
-            else
-                dstp[x] = (src1p[x + dir] + src1n[x - dir]) / 2.0f;
+            if (ucubic) {
+                const int dir3 = dir * 3;
+                const int absDir3 = std::abs(dir3);
+                if (x >= absDir3 && x <= width - 1 - absDir3)
+                    dstp[x] = 0.5625f * (src1p[x + dir] + src1n[x - dir]) - 0.0625f * (src3p[x + dir3] + src3n[x - dir3]);
+                else
+                    dstp[x] = (src1p[x + dir] + src1n[x - dir]) * 0.5f;
+            } else {
+                dstp[x] = (src1p[x + dir] + src1n[x - dir]) * 0.5f;
+            }
         }
     }
 }
@@ -204,19 +222,26 @@ static inline void prepareMask(const uint8_t* srcp, uint8_t* VS_RESTRICT dstp, c
 template<typename pixel_t>
 static void vCheck(const pixel_t* srcp, const pixel_t* scpp, pixel_t* VS_RESTRICT dstp, const int* dmap, void* _tline, const int field_n, const int width,
                    const int height, const ptrdiff_t srcStride, const ptrdiff_t dstStride, const EEDI3Data* VS_RESTRICT d) noexcept {
+    const int vcheck = d->vcheck;
+    const float rcpVthresh0 = d->rcpVthresh0;
+    const float rcpVthresh1 = d->rcpVthresh1;
+    const float rcpVthresh2 = d->rcpVthresh2;
+    const float vthresh2 = d->vthresh2;
+    const int peak = d->peak;
+    
     for (int y = MARGIN_V + field_n; y < height - MARGIN_V; y += 2) {
         if (y >= 6 && y < height - 6) {
-            auto dst3p = srcp - srcStride * 3 + MARGIN_H;
-            auto dst2p = dstp - dstStride * 2;
-            auto dst1p = dstp - dstStride;
-            auto dst1n = dstp + dstStride;
-            auto dst2n = dstp + dstStride * 2;
-            auto dst3n = srcp + srcStride * 3 + MARGIN_H;
+            const pixel_t* VS_RESTRICT dst3p = srcp - srcStride * 3 + MARGIN_H;
+            const pixel_t* VS_RESTRICT dst2p = dstp - dstStride * 2;
+            const pixel_t* VS_RESTRICT dst1p = dstp - dstStride;
+            const pixel_t* VS_RESTRICT dst1n = dstp + dstStride;
+            const pixel_t* VS_RESTRICT dst2n = dstp + dstStride * 2;
+            const pixel_t* VS_RESTRICT dst3n = srcp + srcStride * 3 + MARGIN_H;
             pixel_t* VS_RESTRICT tline = reinterpret_cast<pixel_t*>(_tline);
 
             for (int x = 0; x < width; x++) {
                 const int dirc = dmap[x];
-                const pixel_t cint = scpp ? scpp[x] : std::clamp((9 * (dst1p[x] + dst1n[x]) - (dst3p[x] + dst3n[x]) + 8) / 16, 0, d->peak);
+                const pixel_t cint = scpp ? scpp[x] : std::clamp((9 * (dst1p[x] + dst1n[x]) - (dst3p[x] + dst3n[x]) + 8) / 16, 0, peak);
 
                 if (dirc == 0) {
                     tline[x] = cint;
@@ -231,10 +256,13 @@ static void vCheck(const pixel_t* srcp, const pixel_t* scpp, pixel_t* VS_RESTRIC
                     continue;
                 }
 
-                const int it = (dst2p[x + dirc] + dstp[x - dirc] + 1) / 2;
-                const int ib = (dstp[x + dirc] + dst2n[x - dirc] + 1) / 2;
-                const int vt = std::abs(dst2p[x + dirc] - dst1p[x + dirc]) + std::abs(dstp[x + dirc] - dst1p[x + dirc]);
-                const int vb = std::abs(dst2n[x - dirc] - dst1n[x - dirc]) + std::abs(dstp[x - dirc] - dst1n[x - dirc]);
+                const int x_plus_dirc = x + dirc;
+                const int x_minus_dirc = x - dirc;
+                
+                const int it = (dst2p[x_plus_dirc] + dstp[x_minus_dirc] + 1) >> 1;
+                const int ib = (dstp[x_plus_dirc] + dst2n[x_minus_dirc] + 1) >> 1;
+                const int vt = std::abs(dst2p[x_plus_dirc] - dst1p[x_plus_dirc]) + std::abs(dstp[x_plus_dirc] - dst1p[x_plus_dirc]);
+                const int vb = std::abs(dst2n[x_minus_dirc] - dst1n[x_minus_dirc]) + std::abs(dstp[x_minus_dirc] - dst1n[x_minus_dirc]);
                 const int vc = std::abs(dstp[x] - dst1p[x]) + std::abs(dstp[x] - dst1n[x]);
 
                 const int d0 = std::abs(it - dst1p[x]);
@@ -242,12 +270,12 @@ static void vCheck(const pixel_t* srcp, const pixel_t* scpp, pixel_t* VS_RESTRIC
                 const int d2 = std::abs(vt - vc);
                 const int d3 = std::abs(vb - vc);
 
-                const int mdiff0 = (d->vcheck == 1) ? std::min(d0, d1) : (d->vcheck == 2 ? (d0 + d1 + 1) / 2 : std::max(d0, d1));
-                const int mdiff1 = (d->vcheck == 1) ? std::min(d2, d3) : (d->vcheck == 2 ? (d2 + d3 + 1) / 2 : std::max(d2, d3));
+                const int mdiff0 = (vcheck == 1) ? std::min(d0, d1) : (vcheck == 2 ? (d0 + d1 + 1) >> 1 : std::max(d0, d1));
+                const int mdiff1 = (vcheck == 1) ? std::min(d2, d3) : (vcheck == 2 ? (d2 + d3 + 1) >> 1 : std::max(d2, d3));
 
-                const float a0 = mdiff0 * d->rcpVthresh0;
-                const float a1 = mdiff1 * d->rcpVthresh1;
-                const float a2 = std::max((d->vthresh2 - std::abs(dirc)) * d->rcpVthresh2, 0.0f);
+                const float a0 = mdiff0 * rcpVthresh0;
+                const float a1 = mdiff1 * rcpVthresh1;
+                const float a2 = std::max((vthresh2 - std::abs(dirc)) * rcpVthresh2, 0.0f);
                 const float a = std::min(std::max({ a0, a1, a2 }), 1.0f);
 
                 tline[x] = static_cast<pixel_t>((1.0f - a) * dstp[x] + a * cint);
@@ -267,14 +295,20 @@ static void vCheck(const pixel_t* srcp, const pixel_t* scpp, pixel_t* VS_RESTRIC
 template<>
 void vCheck(const float* srcp, const float* scpp, float* VS_RESTRICT dstp, const int* dmap, void* _tline, const int field_n, const int width, const int height,
             const ptrdiff_t srcStride, const ptrdiff_t dstStride, const EEDI3Data* VS_RESTRICT d) noexcept {
+    const int vcheck = d->vcheck;
+    const float rcpVthresh0 = d->rcpVthresh0;
+    const float rcpVthresh1 = d->rcpVthresh1;
+    const float rcpVthresh2 = d->rcpVthresh2;
+    const float vthresh2 = d->vthresh2;
+    
     for (int y = MARGIN_V + field_n; y < height - MARGIN_V; y += 2) {
         if (y >= 6 && y < height - 6) {
-            auto dst3p = srcp - srcStride * 3 + MARGIN_H;
-            auto dst2p = dstp - dstStride * 2;
-            auto dst1p = dstp - dstStride;
-            auto dst1n = dstp + dstStride;
-            auto dst2n = dstp + dstStride * 2;
-            auto dst3n = srcp + srcStride * 3 + MARGIN_H;
+            const float* VS_RESTRICT dst3p = srcp - srcStride * 3 + MARGIN_H;
+            const float* VS_RESTRICT dst2p = dstp - dstStride * 2;
+            const float* VS_RESTRICT dst1p = dstp - dstStride;
+            const float* VS_RESTRICT dst1n = dstp + dstStride;
+            const float* VS_RESTRICT dst2n = dstp + dstStride * 2;
+            const float* VS_RESTRICT dst3n = srcp + srcStride * 3 + MARGIN_H;
             float* VS_RESTRICT tline = reinterpret_cast<float*>(_tline);
 
             for (int x = 0; x < width; x++) {
@@ -294,10 +328,13 @@ void vCheck(const float* srcp, const float* scpp, float* VS_RESTRICT dstp, const
                     continue;
                 }
 
-                const float it = (dst2p[x + dirc] + dstp[x - dirc]) / 2.0f;
-                const float ib = (dstp[x + dirc] + dst2n[x - dirc]) / 2.0f;
-                const float vt = std::abs(dst2p[x + dirc] - dst1p[x + dirc]) + std::abs(dstp[x + dirc] - dst1p[x + dirc]);
-                const float vb = std::abs(dst2n[x - dirc] - dst1n[x - dirc]) + std::abs(dstp[x - dirc] - dst1n[x - dirc]);
+                const int x_plus_dirc = x + dirc;
+                const int x_minus_dirc = x - dirc;
+                
+                const float it = (dst2p[x_plus_dirc] + dstp[x_minus_dirc]) * 0.5f;
+                const float ib = (dstp[x_plus_dirc] + dst2n[x_minus_dirc]) * 0.5f;
+                const float vt = std::abs(dst2p[x_plus_dirc] - dst1p[x_plus_dirc]) + std::abs(dstp[x_plus_dirc] - dst1p[x_plus_dirc]);
+                const float vb = std::abs(dst2n[x_minus_dirc] - dst1n[x_minus_dirc]) + std::abs(dstp[x_minus_dirc] - dst1n[x_minus_dirc]);
                 const float vc = std::abs(dstp[x] - dst1p[x]) + std::abs(dstp[x] - dst1n[x]);
 
                 const float d0 = std::abs(it - dst1p[x]);
@@ -305,12 +342,12 @@ void vCheck(const float* srcp, const float* scpp, float* VS_RESTRICT dstp, const
                 const float d2 = std::abs(vt - vc);
                 const float d3 = std::abs(vb - vc);
 
-                const float mdiff0 = (d->vcheck == 1) ? std::min(d0, d1) : (d->vcheck == 2 ? (d0 + d1) / 2.0f : std::max(d0, d1));
-                const float mdiff1 = (d->vcheck == 1) ? std::min(d2, d3) : (d->vcheck == 2 ? (d2 + d3) / 2.0f : std::max(d2, d3));
+                const float mdiff0 = (vcheck == 1) ? std::min(d0, d1) : (vcheck == 2 ? (d0 + d1) * 0.5f : std::max(d0, d1));
+                const float mdiff1 = (vcheck == 1) ? std::min(d2, d3) : (vcheck == 2 ? (d2 + d3) * 0.5f : std::max(d2, d3));
 
-                const float a0 = mdiff0 * d->rcpVthresh0;
-                const float a1 = mdiff1 * d->rcpVthresh1;
-                const float a2 = std::max((d->vthresh2 - std::abs(dirc)) * d->rcpVthresh2, 0.0f);
+                const float a0 = mdiff0 * rcpVthresh0;
+                const float a1 = mdiff1 * rcpVthresh1;
+                const float a2 = std::max((vthresh2 - std::abs(dirc)) * rcpVthresh2, 0.0f);
                 const float a = std::min(std::max({ a0, a1, a2 }), 1.0f);
 
                 tline[x] = (1.0f - a) * dstp[x] + a * cint;
