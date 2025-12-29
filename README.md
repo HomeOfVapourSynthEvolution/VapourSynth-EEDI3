@@ -88,6 +88,6 @@ Ported from AviSynth plugin http://bengal.missouri.edu/~kes25c/ and http://ldeso
 
 ```
 meson build
-ninja -C build
-ninja -C build install
+meson compile -C build
+meson install -C build
 ```
