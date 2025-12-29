@@ -604,15 +604,37 @@ static void VS_CC eedi3Create(const VSMap* in, VSMap* out, [[maybe_unused]] void
             if (vsapi->getVideoInfo(d->mclip)->numFrames != d->vi.numFrames)
                 throw "mclip's number of frames doesn't match"s;
 
-            if (vsapi->getVideoInfo(d->mclip)->format.bitsPerSample != 8) {
+            if (d->vi.format.bitsPerSample != 8) {
                 VSMap* args = vsapi->createMap();
+                VSMap* ret;
+
+                if (d->vi.format.colorFamily == cfYUV && d->vi.format.sampleType == stFloat) {
+                    vsapi->mapConsumeNode(args, "clips", d->mclip, maReplace);
+                    vsapi->mapSetData(args, "expr", "", -1, dtUtf8, maAppend);
+                    vsapi->mapSetData(args, "expr", "x 0.5 -", -1, dtUtf8, maAppend);
+
+                    ret = vsapi->invoke(vsapi->getPluginByID(VSH_STD_PLUGIN_ID, core), "Expr", args);
+                    if (vsapi->mapGetError(ret)) {
+                        vsapi->mapSetError(out, vsapi->mapGetError(ret));
+                        vsapi->freeNode(d->node);
+                        vsapi->freeNode(d->sclip);
+                        vsapi->freeMap(args);
+                        vsapi->freeMap(ret);
+                        return;
+                    }
+
+                    d->mclip = vsapi->mapGetNode(ret, "clip", 0, nullptr);
+                    vsapi->clearMap(args);
+                    vsapi->freeMap(ret);
+                }
+
                 vsapi->mapConsumeNode(args, "clip", d->mclip, maReplace);
                 vsapi->mapSetInt(args,
                                  "format",
                                  vsapi->queryVideoFormatID(d->vi.format.colorFamily, stInteger, 8, d->vi.format.subSamplingW, d->vi.format.subSamplingH, core),
                                  maReplace);
 
-                VSMap* ret = vsapi->invoke(vsapi->getPluginByID("com.vapoursynth.resize", core), "Point", args);
+                ret = vsapi->invoke(vsapi->getPluginByID(VSH_RESIZE_PLUGIN_ID, core), "Point", args);
                 if (vsapi->mapGetError(ret)) {
                     vsapi->mapSetError(out, vsapi->mapGetError(ret));
                     vsapi->freeNode(d->node);
