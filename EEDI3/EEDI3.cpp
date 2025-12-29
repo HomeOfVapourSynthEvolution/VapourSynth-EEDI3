@@ -557,18 +557,10 @@ static void VS_CC eedi3Create(const VSMap* in, VSMap* out, [[maybe_unused]] void
         if (d->field < 0 || d->field > 3)
             throw "field must be 0, 1, 2, or 3"s;
 
-        if (!d->dh) {
-            auto frame = vsapi->getFrame(0, d->node, nullptr, 0);
-
-            for (int plane = 0; plane < d->vi.format.numPlanes; plane++) {
-                if (d->process[plane] && (vsapi->getFrameHeight(frame, plane) & 1)) {
-                    vsapi->freeFrame(frame);
+        if (!d->dh)
+            for (int plane = 0; plane < d->vi.format.numPlanes; plane++)
+                if (d->process[plane] && ((d->vi.height >> (plane > 0 ? d->vi.format.subSamplingH : 0)) & 1))
                     throw "plane's height must be mod 2 when dh=False"s;
-                }
-            }
-
-            vsapi->freeFrame(frame);
-        }
 
         if (d->dh && d->field > 1)
             throw "field must be 0 or 1 when dh=True"s;
