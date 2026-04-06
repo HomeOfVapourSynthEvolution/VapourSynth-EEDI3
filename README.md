@@ -2,32 +2,34 @@
 
 EEDI3 works by finding the best non-decreasing (non-crossing) warping between two lines by minimizing a cost functional. The cost is based on neighborhood similarity (favor connecting regions that look similar), the vertical difference created by the interpolated values (favor small differences), the interpolation directions (favor short connections vs long), and the change in interpolation direction from pixel to pixel (favor small changes).
 
-Ported from AviSynth plugin http://bengal.missouri.edu/~kes25c/ and http://ldesoras.free.fr/prod.html#src_eedi3
+Ported from AviSynth plugin http://bengal.missouri.edu/~kes25c/ and http://ldesoras.free.fr/prod.html#src_eedi3.
 
 
 ## Parameters
 
-    eedi3m.EEDI3(clip clip, int field[, bint dh=False, int[] planes=[0, 1, 2], float alpha=0.2, float beta=0.25, float gamma=20.0, int nrad=2, int mdis=20, bint hp=False, bint ucubic=True, bint cost3=True, int vcheck=2, float vthresh0=32.0, float vthresh1=64.0, float vthresh2=4.0, clip sclip=None, clip mclip=None, int opt=0])
+```py
+eedi3m.EEDI3(vnode clip, int field[, bint dh=False, int[] planes=[0, 1, 2], float alpha=0.2, float beta=0.25, float gamma=20.0, int nrad=2, int mdis=20, bint hp=False, bint ucubic=True, bint cost3=True, int vcheck=2, float vthresh0=32.0, float vthresh1=64.0, float vthresh2=4.0, vnode sclip=None, vnode mclip=None, int opt=0])
+```
 
-* clip: Clip to process. Any format with either integer sample type of 8-16 bit depth or float sample type of 32 bit depth is supported.
+- clip: Clip to process. Any format with either integer sample type of 8-16 bit depth or float sample type of 32 bit depth is supported.
 
-* field: Controls the mode of operation (double vs same rate) and which field is kept.
-  * 0 = same rate, keep bottom field
-  * 1 = same rate, keep top field
-  * 2 = double rate (alternates each frame), starts with bottom
-  * 3 = double rate (alternates each frame), starts with top
+- field: Controls the mode of operation (double vs same rate) and which field is kept.
+  - 0 = same rate, keep bottom field
+  - 1 = same rate, keep top field
+  - 2 = double rate (alternates each frame), starts with bottom
+  - 3 = double rate (alternates each frame), starts with top
 
-* dh: Doubles the height of the input. Each line of the input is copied to every other line of the output and the missing lines are interpolated. If `field=0`, the input is copied to the odd lines of the output. If `field=1`, the input is copied to the even lines of the output. `field` must be set to either 0 or 1 when using `dh=True`.
+- dh: Doubles the height of the input. Each line of the input is copied to every other line of the output and the missing lines are interpolated. If `field=0`, the input is copied to the odd lines of the output. If `field=1`, the input is copied to the even lines of the output. `field` must be set to either 0 or 1 when using `dh=True`.
 
-* planes: Sets which planes will be processed. Planes that are not processed will contain uninitialized memory.
+- planes: Specifies which planes will be processed. Planes that are not processed will contain uninitialized memory.
 
-* alpha/beta/gamma: These trade off line/edge connection vs artifacts created. `alpha` and `beta` must be in the range [0,1], and the sum `alpha`+`beta` must be in the range [0,1]. `alpha` is the weight given to connecting similar neighborhoods. The larger `alpha` is the more lines/edges should be connected. `beta` is the weight given to vertical difference created by the interpolation. The larger `beta` is the less edges/lines will be connected (at 1.0 you get no edge directedness at all). The remaining weight (1.0-`alpha`-`beta`) is given to interpolation direction (large directions (away from vertical) cost more). So the more weight you have here the more shorter connections will be favored. Finally, `gamma` penalizes changes in interpolation direction. The larger `gamma` is the smoother the interpolation field between two lines (range is [0,inf]. If lines aren't getting connected then increase `alpha` and maybe decrease `beta`/`gamma`. Go the other way if you are getting unwanted artifacts.
+- alpha/beta/gamma: These trade off line/edge connection vs artifacts created. `alpha` and `beta` must be in the range [0,1], and the sum `alpha`+`beta` must be in the range [0,1]. `alpha` is the weight given to connecting similar neighborhoods. The larger `alpha` is the more lines/edges should be connected. `beta` is the weight given to vertical difference created by the interpolation. The larger `beta` is the less edges/lines will be connected (at 1.0 you get no edge directedness at all). The remaining weight (1.0-`alpha`-`beta`) is given to interpolation direction (large directions (away from vertical) cost more). So the more weight you have here the more shorter connections will be favored. Finally, `gamma` penalizes changes in interpolation direction. The larger `gamma` is the smoother the interpolation field between two lines (range is [0,inf]. If lines aren't getting connected then increase `alpha` and maybe decrease `beta`/`gamma`. Go the other way if you are getting unwanted artifacts.
 
-* nrad/mdis: `nrad` sets the radius used for computing neighborhood similarity. Valid range is [0,3]. `mdis` sets the maximum connection radius. Valid range is [1,40]. If `mdis=20`, then when interpolating pixel (50,10) (x,y), the farthest connections allowed would be between (30,9)/(70,11) and (70,9)/(30,11). Larger `mdis` will allow connecting lines of smaller slope, but also increases the chance of artifacts. Larger `mdis` will be slower. Larger `nrad` will be slower.
+- nrad/mdis: `nrad` sets the radius used for computing neighborhood similarity. Valid range is [0,3]. `mdis` sets the maximum connection radius. Valid range is [1,40]. If `mdis=20`, then when interpolating pixel (50,10) (x,y), the farthest connections allowed would be between (30,9)/(70,11) and (70,9)/(30,11). Larger `mdis` will allow connecting lines of smaller slope, but also increases the chance of artifacts. Larger `mdis` will be slower. Larger `nrad` will be slower.
 
-* hp/ucubic/cost3: These are speed vs quality options. `hp=True`, use half pel steps, `hp=False`, use full pel steps. Currently only full pel is implemented and hence this parameter has no effect. `ucubic=True`, use cubic 4 point interpolation, `ucubic=False`, use 2 point linear interpolation. `cost3=True`, use 3 neighborhood cost function to define similarity, `cost3=False`, use 1 neighborhood cost function.
+- hp/ucubic/cost3: These are speed vs quality options. `hp=True`, use half pel steps, `hp=False`, use full pel steps. Currently only full pel is implemented and hence this parameter has no effect. `ucubic=True`, use cubic 4 point interpolation, `ucubic=False`, use 2 point linear interpolation. `cost3=True`, use 3 neighborhood cost function to define similarity, `cost3=False`, use 1 neighborhood cost function.
 
-* vcheck/vthresh0/vthresh1/vthresh2/sclip:
+- vcheck/vthresh0/vthresh1/vthresh2/sclip:
 ```
   vcheck settings:
 
@@ -75,19 +77,17 @@ Ported from AviSynth plugin http://bengal.missouri.edu/~kes25c/ and http://ldeso
        then vertical cubic interpolation is used to create it.
 ```
 
-* mclip: A mask to use edge-directed interpolation only on specified pixels. Pixels where the mask is 0 are generated using cubic linear or bicubic interpolation. The main goal of the mask is to save calculations.
+- mclip: A mask to use edge-directed interpolation only on specified pixels. Pixels where the mask is 0 are generated using cubic linear or bicubic interpolation. The main goal of the mask is to save calculations.
 
-* opt: Sets which cpu optimizations to use.
-  * 0 = auto detect
-  * 1 = use c
-  * 2 = use sse4.1
-  * 3 = use avx2
+- opt: Specifies which cpu optimizations to use.
+  - 0 = auto detect
+  - 1 = use c
+  - 2 = use sse4.1
+  - 3 = use avx2
 
 
-## Compilation
+## Installation
 
 ```
-meson build
-meson compile -C build
-meson install -C build
+pip install -U vapoursynth-eedi3
 ```
