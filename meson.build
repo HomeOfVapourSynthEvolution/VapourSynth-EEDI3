@@ -6,18 +6,13 @@ project('EEDI3', 'cpp',
     version: '9.0',
 )
 
+py = import('python').find_installation(pure: false)
+
 incdir = include_directories(
-    run_command(
-        find_program('python', 'python3'),
-        '-c',
-        'import vapoursynth as vs; print(vs.get_include())',
-        check: true,
-    ).stdout().strip(),
+    run_command(py, '-c', 'import vapoursynth as vs; print(vs.get_include())', check: true).stdout().strip(),
 )
 
 libs = []
-
-py = import('python').find_installation(pure: false)
 
 add_project_arguments('-DVS_USE_LATEST_API', language: 'cpp')
 
