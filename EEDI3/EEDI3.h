@@ -36,12 +36,12 @@ struct EEDI3Data final {
     std::unordered_map<std::thread::id, std::unique_ptr<int[]>> fpath, dmap;
     std::unordered_map<std::thread::id, std::unique_ptr<uint8_t[]>> mskVector;
     void (*filter)(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, VSFrame* mcp, VSFrame** pad, VSFrame* dst, void* srcVector, uint8_t* mskVector,
-                   bool* VS_RESTRICT bmask, int* pbackt, int* VS_RESTRICT fpath, int* dmap, const int field_n, const EEDI3Data* VS_RESTRICT d,
+                   bool* VS_RESTRICT bmask, int* pbackt, int* VS_RESTRICT fpath, int* dmap, const int field, const EEDI3Data* VS_RESTRICT d,
                    const VSAPI* vsapi) noexcept;
 };
 
-static void copyMask(const VSFrame* src, VSFrame* dst, const int plane, const bool dh, const int field_n, const VSAPI* vsapi) noexcept {
-    const int off = dh ? 0 : field_n;
+static void copyMask(const VSFrame* src, VSFrame* dst, const int plane, const bool dh, const int field, const VSAPI* vsapi) noexcept {
+    const int off = dh ? 0 : field;
     const int mul = dh ? 1 : 2;
 
     vsh::bitblt(vsapi->getWritePtr(dst, plane),
@@ -203,9 +203,9 @@ static inline void prepareMask(const uint8_t* srcp, uint8_t* VS_RESTRICT dstp, c
 }
 
 template<typename pixel_t>
-static void vCheck(const pixel_t* srcp, const pixel_t* scpp, pixel_t* VS_RESTRICT dstp, const int* dmap, void* _tline, const int field_n, const int width,
+static void vCheck(const pixel_t* srcp, const pixel_t* scpp, pixel_t* VS_RESTRICT dstp, const int* dmap, void* _tline, const int field, const int width,
                    const int height, const ptrdiff_t srcStride, const ptrdiff_t dstStride, const EEDI3Data* VS_RESTRICT d) noexcept {
-    for (int y = MARGIN_V + field_n; y < height - MARGIN_V; y += 2) {
+    for (int y = MARGIN_V + field; y < height - MARGIN_V; y += 2) {
         if (y >= 6 && y < height - 6) {
             auto dst3p = srcp - srcStride * 3 + MARGIN_H;
             auto dst2p = dstp - dstStride * 2;
@@ -266,9 +266,9 @@ static void vCheck(const pixel_t* srcp, const pixel_t* scpp, pixel_t* VS_RESTRIC
 }
 
 template<>
-void vCheck(const float* srcp, const float* scpp, float* VS_RESTRICT dstp, const int* dmap, void* _tline, const int field_n, const int width, const int height,
+void vCheck(const float* srcp, const float* scpp, float* VS_RESTRICT dstp, const int* dmap, void* _tline, const int field, const int width, const int height,
             const ptrdiff_t srcStride, const ptrdiff_t dstStride, const EEDI3Data* VS_RESTRICT d) noexcept {
-    for (int y = MARGIN_V + field_n; y < height - MARGIN_V; y += 2) {
+    for (int y = MARGIN_V + field; y < height - MARGIN_V; y += 2) {
         if (y >= 6 && y < height - 6) {
             auto dst3p = srcp - srcStride * 3 + MARGIN_H;
             auto dst2p = dstp - dstStride * 2;

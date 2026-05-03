@@ -154,7 +154,7 @@ inline void calculateConnectionCosts(const float* srcp, const bool* bmask, float
 
 template<typename pixel_t, typename vector_t>
 void filter_avx2(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, VSFrame* mcp, VSFrame** pad, VSFrame* dst, void* _srcVector, uint8_t* _mskVector,
-                 bool* VS_RESTRICT bmask, int* _pbackt, int* VS_RESTRICT fpath, int* _dmap, const int field_n, const EEDI3Data* VS_RESTRICT d,
+                 bool* VS_RESTRICT bmask, int* _pbackt, int* VS_RESTRICT fpath, int* _dmap, const int field, const EEDI3Data* VS_RESTRICT d,
                  const VSAPI* vsapi) noexcept {
     for (int plane = 0; plane < d->vi.format.numPlanes; plane++) {
         if (d->process[plane]) {
@@ -174,32 +174,32 @@ void filter_avx2(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, V
             auto ccosts = _ccosts.get();
             auto pcosts = _pcosts.get();
 
-            copyPad<pixel_t>(src, pad[plane], plane, d->dh, 1 - field_n, vsapi);
+            copyPad<pixel_t>(src, pad[plane], plane, d->dh, 1 - field, vsapi);
 
             const uint8_t* maskp = nullptr;
             if (bmask) {
                 maskp = vsapi->getReadPtr(mcp, plane);
-                copyMask(mclip, mcp, plane, d->dh, field_n, vsapi);
+                copyMask(mclip, mcp, plane, d->dh, field, vsapi);
             }
 
-            vsh::bitblt(_dstp + dstStride * (1 - field_n),
+            vsh::bitblt(_dstp + dstStride * (1 - field),
                         vsapi->getStride(dst, plane) * 2,
-                        _srcp + srcStride * (MARGIN_V + 1 - field_n) + MARGIN_H,
+                        _srcp + srcStride * (MARGIN_V + 1 - field) + MARGIN_H,
                         vsapi->getStride(pad[plane], 0) * 2,
                         dstWidth * sizeof(pixel_t),
                         dstHeight / 2);
 
             _srcp += srcStride * MARGIN_V;
-            _dstp += dstStride * field_n;
+            _dstp += dstStride * field;
 
-            for (int y = field_n; y < dstHeight; y += 2 * d->vectorSize) {
-                const int off = (y - field_n) / 2;
+            for (int y = field; y < dstHeight; y += 2 * d->vectorSize) {
+                const int off = (y - field) / 2;
 
-                prepareLines<pixel_t, vector_t>(_srcp + srcStride * (1 - field_n) + MARGIN_H, srcVector, dstWidth, (dstHeight + field_n) / 2, srcStride * 2,
-                                                srcWidth, off + field_n, d->vectorSize);
+                prepareLines<pixel_t, vector_t>(_srcp + srcStride * (1 - field) + MARGIN_H, srcVector, dstWidth, (dstHeight + field) / 2, srcStride * 2,
+                                                srcWidth, off + field, d->vectorSize);
 
                 if (bmask) {
-                    prepareMask(maskp, _mskVector, dstWidth, (dstHeight + field_n) / 2, vsapi->getStride(mcp, plane), off, d->vectorSize);
+                    prepareMask(maskp, _mskVector, dstWidth, (dstHeight + field) / 2, vsapi->getStride(mcp, plane), off, d->vectorSize);
 
                     auto mskVector = reinterpret_cast<const int64_t*>(_mskVector);
                     const int minmdis = std::min(dstWidth, d->mdis);
@@ -270,7 +270,7 @@ void filter_avx2(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, V
                 }
 
                 for (int vs = 0; vs < d->vectorSize; vs++) {
-                    const int realY = field_n + (off + vs) * 2;
+                    const int realY = field + (off + vs) * 2;
                     if (realY >= dstHeight)
                         break;
 
@@ -294,14 +294,14 @@ void filter_avx2(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, V
                 }
             }
 
-            _srcp += srcStride * field_n;
+            _srcp += srcStride * field;
 
             if (d->vcheck > 0) {
                 const pixel_t* scpp = nullptr;
                 if (d->sclip)
-                    scpp = reinterpret_cast<const pixel_t*>(vsapi->getReadPtr(scp, plane)) + dstStride * field_n;
+                    scpp = reinterpret_cast<const pixel_t*>(vsapi->getReadPtr(scp, plane)) + dstStride * field;
 
-                vCheck<pixel_t>(_srcp, scpp, _dstp, _dmap, fpath, field_n, dstWidth, srcHeight, srcStride, dstStride, d);
+                vCheck<pixel_t>(_srcp, scpp, _dstp, _dmap, fpath, field, dstWidth, srcHeight, srcStride, dstStride, d);
             }
         }
     }
@@ -309,13 +309,13 @@ void filter_avx2(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, V
 
 template void filter_avx2<uint8_t, int>(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, VSFrame* mcp, VSFrame** pad, VSFrame* dst,
                                         void* _srcVector, uint8_t* _mskVector, bool* VS_RESTRICT bmask, int* _pbackt, int* VS_RESTRICT fpath, int* _dmap,
-                                        const int field_n, const EEDI3Data* VS_RESTRICT d, const VSAPI* vsapi) noexcept;
+                                        const int field, const EEDI3Data* VS_RESTRICT d, const VSAPI* vsapi) noexcept;
 
 template void filter_avx2<uint16_t, int>(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, VSFrame* mcp, VSFrame** pad, VSFrame* dst,
                                          void* _srcVector, uint8_t* _mskVector, bool* VS_RESTRICT bmask, int* _pbackt, int* VS_RESTRICT fpath, int* _dmap,
-                                         const int field_n, const EEDI3Data* VS_RESTRICT d, const VSAPI* vsapi) noexcept;
+                                         const int field, const EEDI3Data* VS_RESTRICT d, const VSAPI* vsapi) noexcept;
 
 template void filter_avx2<float, float>(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, VSFrame* mcp, VSFrame** pad, VSFrame* dst,
                                         void* _srcVector, uint8_t* _mskVector, bool* VS_RESTRICT bmask, int* _pbackt, int* VS_RESTRICT fpath, int* _dmap,
-                                        const int field_n, const EEDI3Data* VS_RESTRICT d, const VSAPI* vsapi) noexcept;
+                                        const int field, const EEDI3Data* VS_RESTRICT d, const VSAPI* vsapi) noexcept;
 #endif

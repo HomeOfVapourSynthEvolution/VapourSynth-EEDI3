@@ -34,12 +34,12 @@ using namespace std::string_literals;
 #ifdef EEDI3_X86
 template<typename pixel_t, typename vector_t>
 extern void filter_sse4(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, VSFrame* mcp, VSFrame** pad, VSFrame* dst, void* srcVector,
-                        uint8_t* mskVector, bool* VS_RESTRICT bmask, int* pbackt, int* VS_RESTRICT fpath, int* dmap, const int field_n,
+                        uint8_t* mskVector, bool* VS_RESTRICT bmask, int* pbackt, int* VS_RESTRICT fpath, int* dmap, const int field,
                         const EEDI3Data* VS_RESTRICT d, const VSAPI* vsapi) noexcept;
 
 template<typename pixel_t, typename vector_t>
 extern void filter_avx2(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, VSFrame* mcp, VSFrame** pad, VSFrame* dst, void* srcVector,
-                        uint8_t* mskVector, bool* VS_RESTRICT bmask, int* pbackt, int* VS_RESTRICT fpath, int* dmap, const int field_n,
+                        uint8_t* mskVector, bool* VS_RESTRICT bmask, int* pbackt, int* VS_RESTRICT fpath, int* dmap, const int field,
                         const EEDI3Data* VS_RESTRICT d, const VSAPI* vsapi) noexcept;
 #endif
 
@@ -177,7 +177,7 @@ inline void calculateConnectionCosts(const float* src3p, const float* src1p, con
 
 template<typename pixel_t>
 static void filter_c(const VSFrame* src, const VSFrame* scp, const VSFrame* mclip, VSFrame* mcp, VSFrame** pad, VSFrame* dst, [[maybe_unused]] void* srcVector,
-                     [[maybe_unused]] uint8_t* mskVector, bool* VS_RESTRICT bmask, int* pbackt, int* VS_RESTRICT fpath, int* _dmap, const int field_n,
+                     [[maybe_unused]] uint8_t* mskVector, bool* VS_RESTRICT bmask, int* pbackt, int* VS_RESTRICT fpath, int* _dmap, const int field,
                      const EEDI3Data* VS_RESTRICT d, const VSAPI* vsapi) noexcept {
     for (int plane = 0; plane < d->vi.format.numPlanes; plane++) {
         if (d->process[plane]) {
@@ -195,26 +195,26 @@ static void filter_c(const VSFrame* src, const VSFrame* scp, const VSFrame* mcli
             auto ccosts = _ccosts.get();
             auto pcosts = _pcosts.get();
 
-            copyPad<pixel_t>(src, pad[plane], plane, d->dh, 1 - field_n, vsapi);
+            copyPad<pixel_t>(src, pad[plane], plane, d->dh, 1 - field, vsapi);
 
             const uint8_t* _maskp = nullptr;
             if (bmask) {
                 _maskp = vsapi->getReadPtr(mcp, plane);
-                copyMask(mclip, mcp, plane, d->dh, field_n, vsapi);
+                copyMask(mclip, mcp, plane, d->dh, field, vsapi);
             }
 
-            vsh::bitblt(_dstp + dstStride * (1 - field_n),
+            vsh::bitblt(_dstp + dstStride * (1 - field),
                         vsapi->getStride(dst, plane) * 2,
-                        _srcp + srcStride * (MARGIN_V + 1 - field_n) + MARGIN_H,
+                        _srcp + srcStride * (MARGIN_V + 1 - field) + MARGIN_H,
                         vsapi->getStride(pad[plane], 0) * 2,
                         dstWidth * sizeof(pixel_t),
                         dstHeight / 2);
 
-            _srcp += srcStride * (MARGIN_V + field_n);
-            _dstp += dstStride * field_n;
+            _srcp += srcStride * (MARGIN_V + field);
+            _dstp += dstStride * field;
 
-            for (int y = MARGIN_V + field_n; y < srcHeight - MARGIN_V; y += 2) {
-                const int off = (y - MARGIN_V - field_n) / 2;
+            for (int y = MARGIN_V + field; y < srcHeight - MARGIN_V; y += 2) {
+                const int off = (y - MARGIN_V - field) / 2;
                 auto srcp = _srcp + srcStride * off * 2 + MARGIN_H;
                 auto dstp = _dstp + dstStride * off * 2;
                 auto dmap = _dmap + dstWidth * off;
@@ -305,9 +305,9 @@ static void filter_c(const VSFrame* src, const VSFrame* scp, const VSFrame* mcli
             if (d->vcheck > 0) {
                 const pixel_t* scpp = nullptr;
                 if (d->sclip)
-                    scpp = reinterpret_cast<const pixel_t*>(vsapi->getReadPtr(scp, plane)) + dstStride * field_n;
+                    scpp = reinterpret_cast<const pixel_t*>(vsapi->getReadPtr(scp, plane)) + dstStride * field;
 
-                vCheck<pixel_t>(_srcp, scpp, _dstp, _dmap, fpath, field_n, dstWidth, srcHeight, srcStride, dstStride, d);
+                vCheck<pixel_t>(_srcp, scpp, _dstp, _dmap, fpath, field, dstWidth, srcHeight, srcStride, dstStride, d);
             }
         }
     }
@@ -414,9 +414,7 @@ static const VSFrame* VS_CC eedi3GetFrame(int n, int activationReason, void* ins
                 pad[plane] = vsapi->newVideoFrame(&d->padFormat, vsapi->getFrameWidth(dst, plane) + MARGIN_H * 2,
                                                   vsapi->getFrameHeight(dst, plane) + MARGIN_V * 2, nullptr, core);
 
-        int field = d->field;
-        if (field > 1)
-            field -= 2;
+        int field = d->field & 1;
 
         int err;
         const int fieldBased = vsapi->mapGetIntSaturated(vsapi->getFramePropertiesRO(src), "_FieldBased", 0, &err);
@@ -425,17 +423,10 @@ static const VSFrame* VS_CC eedi3GetFrame(int n, int activationReason, void* ins
         else if (fieldBased == VSC_FIELD_TOP)
             field = 1;
 
-        int field_n;
-        if (d->field > 1) {
-            if (n & 1)
-                field_n = (field == 0);
-            else
-                field_n = (field == 1);
-        } else {
-            field_n = field;
-        }
+        if (d->field > 1)
+            field = (n & 1) ^ field;
 
-        d->filter(src, scp, mclip, mcp, pad, dst, srcVector, mskVector, bmask, pbackt, fpath, dmap, field_n, d, vsapi);
+        d->filter(src, scp, mclip, mcp, pad, dst, srcVector, mskVector, bmask, pbackt, fpath, dmap, field, d, vsapi);
 
         VSMap* props = vsapi->getFramePropertiesRW(dst);
         vsapi->mapSetInt(props, "_FieldBased", VSC_FIELD_PROGRESSIVE, maReplace);
