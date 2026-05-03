@@ -23,12 +23,13 @@
 **   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
+#include <mutex>
 #include <string>
 #include <vector>
 
 #include "EEDI3.h"
 
-using namespace std::literals;
+using namespace std::string_literals;
 
 #ifdef EEDI3_X86
 template<typename pixel_t, typename vector_t>
@@ -328,26 +329,25 @@ static const VSFrame* VS_CC eedi3GetFrame(int n, int activationReason, void* ins
         float* srcVector;
         uint8_t* mskVector;
         bool* bmask;
-        int* pbackt;
-        int* fpath;
-        int* dmap;
+        int* pbackt, * fpath, * dmap;
 
         try {
             auto threadID = std::this_thread::get_id();
-            std::lock_guard<std::mutex> lock(d->mutex);
 
             if (!d->srcVector.count(threadID)) {
+                std::unique_lock<std::shared_mutex> lock(d->mutex);
+
                 if (d->vectorSize > 1) {
-                    auto _srcVector = vsh::vsh_aligned_malloc<float>((d->vi.width + MARGIN_H * 2) * 4 * d->vectorSize * sizeof(float), d->alignment);
-                    if (!_srcVector)
+                    srcVector = vsh::vsh_aligned_malloc<float>((d->vi.width + MARGIN_H * 2) * 4 * d->vectorSize * sizeof(float), d->alignment);
+                    if (!srcVector)
                         throw "malloc failure (srcVector)"s;
-                    d->srcVector.emplace(threadID, aligned_float{ _srcVector, &vsh::vsh_aligned_free });
+                    d->srcVector.emplace(threadID, aligned_float{ srcVector, &vsh::vsh_aligned_free });
 
                     if (d->mclip) {
-                        auto _mskVector = new (std::nothrow) uint8_t[d->vi.width * d->vectorSize];
-                        if (!_mskVector)
+                        mskVector = new (std::nothrow) uint8_t[d->vi.width * d->vectorSize];
+                        if (!mskVector)
                             throw "malloc failure (mskVector)"s;
-                        d->mskVector.emplace(threadID, _mskVector);
+                        d->mskVector.emplace(threadID, mskVector);
                     } else {
                         d->mskVector.emplace(threadID, nullptr);
                     }
@@ -357,36 +357,38 @@ static const VSFrame* VS_CC eedi3GetFrame(int n, int activationReason, void* ins
                 }
 
                 if (d->mclip) {
-                    auto _bmask = new (std::nothrow) bool[d->vi.width];
-                    if (!_bmask)
+                    bmask = new (std::nothrow) bool[d->vi.width];
+                    if (!bmask)
                         throw "malloc failure (bmask)"s;
-                    d->bmask.emplace(threadID, _bmask);
+                    d->bmask.emplace(threadID, bmask);
                 } else {
                     d->bmask.emplace(threadID, nullptr);
                 }
 
-                auto _pbackt = vsh::vsh_aligned_malloc<int>(d->vi.width * d->tpitchVector * sizeof(int), d->alignment);
-                if (!_pbackt)
+                pbackt = vsh::vsh_aligned_malloc<int>(d->vi.width * d->tpitchVector * sizeof(int), d->alignment);
+                if (!pbackt)
                     throw "malloc failure (pbackt)"s;
-                d->pbackt.emplace(threadID, aligned_int{ _pbackt, &vsh::vsh_aligned_free });
+                d->pbackt.emplace(threadID, aligned_int{ pbackt, &vsh::vsh_aligned_free });
 
-                auto _fpath = new (std::nothrow) int[d->vi.width];
-                if (!_fpath)
+                fpath = new (std::nothrow) int[d->vi.width];
+                if (!fpath)
                     throw "malloc failure (fpath)"s;
-                d->fpath.emplace(threadID, _fpath);
+                d->fpath.emplace(threadID, fpath);
 
-                auto _dmap = new (std::nothrow) int[d->vi.width * d->vi.height];
-                if (!_dmap)
+                dmap = new (std::nothrow) int[d->vi.width * d->vi.height];
+                if (!dmap)
                     throw "malloc failure (dmap)"s;
-                d->dmap.emplace(threadID, _dmap);
-            }
+                d->dmap.emplace(threadID, dmap);
+            } else {
+                std::shared_lock<std::shared_mutex> lock(d->mutex);
 
-            srcVector = d->srcVector.at(threadID).get();
-            mskVector = d->mskVector.at(threadID).get();
-            bmask = d->bmask.at(threadID).get();
-            pbackt = d->pbackt.at(threadID).get();
-            fpath = d->fpath.at(threadID).get();
-            dmap = d->dmap.at(threadID).get();
+                srcVector = d->srcVector.at(threadID).get();
+                mskVector = d->mskVector.at(threadID).get();
+                bmask = d->bmask.at(threadID).get();
+                pbackt = d->pbackt.at(threadID).get();
+                fpath = d->fpath.at(threadID).get();
+                dmap = d->dmap.at(threadID).get();
+            }
         } catch (const std::string& error) {
             vsapi->setFilterError(("EEDI3: " + error).c_str(), frameCtx);
             return nullptr;

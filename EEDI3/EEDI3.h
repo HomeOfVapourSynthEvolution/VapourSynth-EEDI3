@@ -2,7 +2,7 @@
 
 #include <algorithm>
 #include <memory>
-#include <mutex>
+#include <shared_mutex>
 #include <thread>
 #include <unordered_map>
 
@@ -29,7 +29,7 @@ struct EEDI3Data final {
     float alpha, beta, gamma, vthresh2;
     float remainingWeight, rcpVthresh0, rcpVthresh1, rcpVthresh2;
     int vectorSize, alignment, tpitch, tpitchVector, mdisVector, peak;
-    std::mutex mutex;
+    std::shared_mutex mutex;
     std::unordered_map<std::thread::id, aligned_float> srcVector;
     std::unordered_map<std::thread::id, aligned_int> pbackt;
     std::unordered_map<std::thread::id, std::unique_ptr<bool[]>> bmask;
