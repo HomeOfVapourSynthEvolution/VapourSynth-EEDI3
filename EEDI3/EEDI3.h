@@ -7,6 +7,7 @@
 #include <unordered_map>
 
 #include <VapourSynth4.h>
+#include <VSConstants4.h>
 #include <VSHelper4.h>
 
 #ifdef EEDI3_X86

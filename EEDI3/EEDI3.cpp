@@ -418,9 +418,9 @@ static const VSFrame* VS_CC eedi3GetFrame(int n, int activationReason, void* ins
 
         int err;
         const int fieldBased = vsapi->mapGetIntSaturated(vsapi->getFramePropertiesRO(src), "_FieldBased", 0, &err);
-        if (fieldBased == 1)
+        if (fieldBased == VSC_FIELD_BOTTOM)
             field = 0;
-        else if (fieldBased == 2)
+        else if (fieldBased == VSC_FIELD_TOP)
             field = 1;
 
         int field_n;
@@ -436,7 +436,7 @@ static const VSFrame* VS_CC eedi3GetFrame(int n, int activationReason, void* ins
         d->filter(src, scp, mclip, mcp, pad, dst, srcVector, mskVector, bmask, pbackt, fpath, dmap, field_n, d, vsapi);
 
         VSMap* props = vsapi->getFramePropertiesRW(dst);
-        vsapi->mapSetInt(props, "_FieldBased", 0, maReplace);
+        vsapi->mapSetInt(props, "_FieldBased", VSC_FIELD_PROGRESSIVE, maReplace);
 
         if (d->field > 1) {
             int errNum, errDen;
