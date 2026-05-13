@@ -326,10 +326,10 @@ static const VSFrame* VS_CC eedi3GetFrame(int n, int activationReason, void* ins
         if (d->mclip)
             vsapi->requestFrameFilter(d->field > 1 ? n / 2 : n, d->mclip, frameCtx);
     } else if (activationReason == arAllFramesReady) {
-        float* srcVector;
-        uint8_t* mskVector;
-        bool* bmask;
-        int* pbackt, * fpath, * dmap;
+        float* srcVector = nullptr;
+        uint8_t* mskVector = nullptr;
+        bool* bmask = nullptr;
+        int* pbackt = nullptr, * fpath = nullptr, * dmap = nullptr;
 
         try {
             auto threadID = std::this_thread::get_id();
