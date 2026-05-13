@@ -3,7 +3,7 @@ project('EEDI3', 'cpp',
     license: 'GPL-2.0-or-later',
     license_files: 'LICENSE',
     meson_version: '>=1.2.3',
-    version: '9.1',
+    version: '10.0',
 )
 
 py = import('python').find_installation(pure: false)
